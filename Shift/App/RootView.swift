@@ -178,6 +178,13 @@ struct PlanView: View {
             .scrollContentBackground(.hidden)
             .background(Color(red: 0.05, green: 0.07, blue: 0.12).ignoresSafeArea())
             .navigationTitle("Plan")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink("Edit trip") {
+                        ItineraryView()
+                    }
+                }
+            }
         }
     }
 }
@@ -198,9 +205,17 @@ struct SettingsView: View {
                     Toggle("Timed reminders", isOn: $model.notificationsOn)
                 }
                 Section("Trip") {
-                    Text(model.trip.name)
-                    Text("AMS → Miami → Atlanta → LA → SF → AMS")
-                        .foregroundStyle(.secondary)
+                    NavigationLink {
+                        ItineraryView()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(model.trip.name)
+                            Text(model.trip.routeSummary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(3)
+                        }
+                    }
                 }
                 Section("About") {
                     Text("Shift times your light, sleep, and caffeine around timezone jumps. It is a coach, not a doctor.")

@@ -214,7 +214,8 @@ jobs:
           fastlane pilot upload \
             --ipa "$RUNNER_TEMP/export/Shift.ipa" \
             --api_key_path "$API_KEY_PATH" \
-            --skip_waiting_for_build_processing true
+            --skip_waiting_for_build_processing true \
+            --distribute_external false
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4

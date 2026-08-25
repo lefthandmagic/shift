@@ -30,15 +30,9 @@ platform :ios do
 
     app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
     if app.nil?
-      UI.message("Creating App Store Connect app Shift")
-      Spaceship::ConnectAPI::App.create(
-        name: "Shift",
-        version_string: "1.0",
-        sku: "shift-jetlag-001",
-        primary_locale: "en-US",
-        bundle_id: BUNDLE_ID,
-        platforms: ["IOS"]
-      )
+      UI.important("Create the App Store Connect record once (API keys cannot CREATE apps):")
+      UI.important("https://appstoreconnect.apple.com → My Apps → + → iOS")
+      UI.important("Name: Shift  ·  Bundle ID: #{BUNDLE_ID}  ·  SKU: shift-jetlag-001")
     else
       UI.success("App Store Connect app already exists")
     end

@@ -12,7 +12,8 @@ Same TestFlight path as [Fitbit Health Sync](https://github.com/lefthandmagic/fi
 - **Plan:** day-by-day shift (westbound delay, eastbound advance, flight days)
 - **Notifications:** next 3 days of timed reminders (once you allow them)
 - **Home sleep:** default 23:00–07:00 Amsterdam, editable
-- **KATSEYE 11 Sep 20:00** is baked in so landing-day bedtime sits after the show
+- **Itinerary:** edit stops, times, timezones, flights, and events in-app (Plan → Edit trip, or Settings). Edits persist on the phone. Reset restores the default US trip.
+- **KATSEYE 11 Sep 20:00** is included so landing-day bedtime sits after the show. ATL → LAX is a placeholder until you book — change Atlanta’s end or LA’s start.
 
 ## Generate Xcode project
 
@@ -26,9 +27,18 @@ Signing: team `DNQVHANQBU`, bundle `com.praveenmurugesan.Shift`.
 
 ## TestFlight
 
+Internal only (Praveen). Do not add testers, groups, or a Public Link.
+
 GitHub → Actions → **iOS Release Upload** → Run workflow (`upload_to_testflight = true`).
 
-First run also creates the App Store Connect app + distribution profile via the App Store Connect API (same secrets as Fitbit Health Sync).
+Create the App Store Connect **app record once** in the web UI (API keys cannot CREATE apps):
+
+- https://appstoreconnect.apple.com → My Apps → **+** → iOS
+- Name: **Shift**
+- Bundle ID: `com.praveenmurugesan.Shift`
+- SKU: `shift-jetlag-001`
+
+Then CI can fetch the profile and upload. Same secrets as Fitbit Health Sync.
 
 Copy these repository secrets from `lefthandmagic/fitbit-health-sync` (or set them once at account level):
 

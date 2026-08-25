@@ -13,9 +13,9 @@ final class AppModel: ObservableObject {
     private let notifications = NotificationScheduler()
     private var timer: Timer?
 
-    init(defaults: UserDefaults = .standard, trip: Trip = Trips.usAugust2026()) {
+    init(defaults: UserDefaults = .standard, trip: Trip? = nil) {
         self.defaults = defaults
-        self.trip = trip
+        self.trip = trip ?? TripStore.load(from: defaults) ?? Trips.usAugust2026()
         self.schedule = SleepSchedule(
             bedHour: defaults.object(forKey: "bedHour") as? Int ?? 23,
             bedMinute: defaults.object(forKey: "bedMinute") as? Int ?? 0,
@@ -23,7 +23,7 @@ final class AppModel: ObservableObject {
             wakeMinute: defaults.object(forKey: "wakeMinute") as? Int ?? 0
         )
         self.notificationsOn = defaults.object(forKey: "notificationsOn") as? Bool ?? true
-        self.plans = PlanEngine.build(trip: trip, schedule: self.schedule, now: Date())
+        self.plans = PlanEngine.build(trip: self.trip, schedule: self.schedule, now: Date())
         startClock()
     }
 
@@ -56,6 +56,47 @@ final class AppModel: ObservableObject {
         defaults.set(schedule.wakeHour, forKey: "wakeHour")
         defaults.set(schedule.wakeMinute, forKey: "wakeMinute")
         defaults.set(notificationsOn, forKey: "notificationsOn")
+        TripStore.save(trip, to: defaults)
+    }
+
+    func applyTrip(_ trip: Trip) {
+        self.trip = trip
+        rebuild()
+    }
+
+    func resetTrip() {
+        trip = Trips.usAugust2026()
+        rebuild()
+    }
+
+    func replaceSegment(_ segment: TripSegment) {
+        trip.replaceSegment(segment)
+        rebuild()
+    }
+
+    func addSegment() {
+        trip.addSegment()
+        rebuild()
+    }
+
+    func deleteSegment(id: UUID) {
+        trip.deleteSegment(id: id)
+        rebuild()
+    }
+
+    func replaceEvent(_ event: TripEvent) {
+        trip.replaceEvent(event)
+        rebuild()
+    }
+
+    func addEvent() {
+        trip.addEvent()
+        rebuild()
+    }
+
+    func deleteEvent(id: UUID) {
+        trip.deleteEvent(id: id)
+        rebuild()
     }
 
     private func startClock() {

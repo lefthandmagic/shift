@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		09FDE822967A4C8F33842A66 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CEA1820CDE2B572E03ACBB64 /* Assets.xcassets */; };
+		0E211993A2739A81846C40D2 /* ItineraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDFD79A2294677D9BD3A774 /* ItineraryView.swift */; };
 		0ED35E1D4F34EE3050A1C9A2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4038F0B7593F78904CA9A2D2 /* RootView.swift */; };
 		1ADE0C5CF29E4E14D10CA34F /* PlanEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ABCF018F379839D8BBD141 /* PlanEngine.swift */; };
 		5DA6B52EC7063BEB76568DB4 /* PlanEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23217D951C7FB16B7D8A7615 /* PlanEngineTests.swift */; };
@@ -40,6 +41,7 @@
 		BF22B007F93DB1BD70B99209 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		BF408E320B6924AE890897AE /* Trips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trips.swift; sourceTree = "<group>"; };
 		C3EBACAA03B26469E3F18FC3 /* NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
+		CCDFD79A2294677D9BD3A774 /* ItineraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItineraryView.swift; sourceTree = "<group>"; };
 		CD1ED8225B25350C658A7E53 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		CEA1820CDE2B572E03ACBB64 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EDC72740154ED1683254B824 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -60,6 +62,7 @@
 			isa = PBXGroup;
 			children = (
 				CD1ED8225B25350C658A7E53 /* AppModel.swift */,
+				CCDFD79A2294677D9BD3A774 /* ItineraryView.swift */,
 				4038F0B7593F78904CA9A2D2 /* RootView.swift */,
 				94FB623E54F816BCE28F53EF /* ShiftApp.swift */,
 			);
@@ -229,6 +232,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FEAF3DFBAAD27195E451336F /* AppModel.swift in Sources */,
+				0E211993A2739A81846C40D2 /* ItineraryView.swift in Sources */,
 				AEAF73C2E5237D11CA5B3DAF /* Models.swift in Sources */,
 				D4ED58F5B5A5FD24A71A52EE /* NotificationScheduler.swift in Sources */,
 				1ADE0C5CF29E4E14D10CA34F /* PlanEngine.swift in Sources */,
