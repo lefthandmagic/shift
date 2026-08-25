@@ -2,6 +2,8 @@ opt_out_usage
 default_platform(:ios)
 
 platform :ios do
+  BUNDLE_ID = "com.praveenmurugesan.Shift"
+
   def connect_key
     app_store_connect_api_key(
       key_id: ENV.fetch("APPSTORE_KEY_ID"),
@@ -13,22 +15,43 @@ platform :ios do
 
   lane :ensure_app do
     connect_key
-    produce(
-      app_identifier: "com.praveenmurugesan.Shift",
-      app_name: "Shift",
-      language: "English",
-      sku: "shift-jetlag-001",
-      team_id: "DNQVHANQBU"
-    )
+
+    bundle = Spaceship::ConnectAPI::BundleId.all.find { |b| b.identifier == BUNDLE_ID }
+    if bundle.nil?
+      UI.message("Creating bundle ID #{BUNDLE_ID}")
+      Spaceship::ConnectAPI::BundleId.create(
+        name: "Shift",
+        identifier: BUNDLE_ID,
+        platform: "IOS"
+      )
+    else
+      UI.success("Bundle ID already exists")
+    end
+
+    app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
+    if app.nil?
+      UI.message("Creating App Store Connect app Shift")
+      Spaceship::ConnectAPI::App.create(
+        name: "Shift",
+        version_string: "1.0",
+        sku: "shift-jetlag-001",
+        primary_locale: "en-US",
+        bundle_id: BUNDLE_ID,
+        platforms: ["IOS"]
+      )
+    else
+      UI.success("App Store Connect app already exists")
+    end
   end
 
   lane :fetch_profile do
     connect_key
     sigh(
-      app_identifier: "com.praveenmurugesan.Shift",
+      app_identifier: BUNDLE_ID,
       team_id: "DNQVHANQBU",
       force: true,
-      output_path: ENV.fetch("RUNNER_TEMP")
+      output_path: ENV.fetch("RUNNER_TEMP"),
+      skip_certificate_verification: true
     )
   end
 end
