@@ -1,0 +1,49 @@
+name: Shift
+options:
+  bundleIdPrefix: com.praveenmurugesan
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+    IPHONEOS_DEPLOYMENT_TARGET: 17.0
+packages: {}
+targets:
+  Shift:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - Shift
+    info:
+      path: Shift/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Shift
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchStoryboardName: LaunchScreen
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.praveenmurugesan.Shift
+        INFOPLIST_KEY_CFBundleDisplayName: Shift
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: DNQVHANQBU
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies: []
+
+  ShiftTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - ShiftTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.praveenmurugesan.ShiftTests
+    dependencies:
+      - target: Shift
