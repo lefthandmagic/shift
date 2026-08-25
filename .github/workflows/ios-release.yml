@@ -80,13 +80,24 @@ jobs:
 
       - name: Ensure App Store Connect app + bundle ID
         run: |
-          fastlane produce \
+          set +e
+          PRODUCE_OUT=$(fastlane produce \
             --api_key_path "$API_KEY_PATH" \
             --app_identifier "$APP_BUNDLE_IDENTIFIER" \
             --app_name "Shift" \
             --language "English" \
             --sku "shift-jetlag-001" \
-            --team_id DNQVHANQBU || true
+            --team_id DNQVHANQBU 2>&1)
+          PRODUCE_STATUS=$?
+          set -e
+          echo "$PRODUCE_OUT"
+          if [ "$PRODUCE_STATUS" -ne 0 ]; then
+            if echo "$PRODUCE_OUT" | grep -qiE 'already exists|taken|already been created'; then
+              echo "App or bundle ID already exists; continuing."
+            else
+              exit "$PRODUCE_STATUS"
+            fi
+          fi
 
       - name: Install signing certificate
         env:
