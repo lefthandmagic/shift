@@ -12,8 +12,8 @@ platform :ios do
   end
 
   lane :ensure_app do
+    connect_key
     produce(
-      api_key: connect_key,
       app_identifier: "com.praveenmurugesan.Shift",
       app_name: "Shift",
       language: "English",
@@ -23,8 +23,8 @@ platform :ios do
   end
 
   lane :fetch_profile do
+    connect_key
     sigh(
-      api_key: connect_key,
       app_identifier: "com.praveenmurugesan.Shift",
       team_id: "DNQVHANQBU",
       force: true,
