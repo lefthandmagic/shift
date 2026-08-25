@@ -81,13 +81,7 @@ jobs:
       - name: Ensure App Store Connect app + bundle ID
         run: |
           set +e
-          PRODUCE_OUT=$(fastlane produce \
-            --api_key_path "$API_KEY_PATH" \
-            --app_identifier "$APP_BUNDLE_IDENTIFIER" \
-            --app_name "Shift" \
-            --language "English" \
-            --sku "shift-jetlag-001" \
-            --team_id DNQVHANQBU 2>&1)
+          PRODUCE_OUT=$(fastlane ensure_app 2>&1)
           PRODUCE_STATUS=$?
           set -e
           echo "$PRODUCE_OUT"
@@ -116,12 +110,7 @@ jobs:
 
       - name: Fetch or create App Store profile
         run: |
-          fastlane sigh \
-            --api_key_path "$API_KEY_PATH" \
-            --app_identifier "$APP_BUNDLE_IDENTIFIER" \
-            --team_id DNQVHANQBU \
-            --force \
-            --output_path "$RUNNER_TEMP"
+          fastlane fetch_profile
           PP_PATH=$(ls "$RUNNER_TEMP"/*.mobileprovision | head -1)
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           PROFILE_PLIST="$(security cms -D -i "$PP_PATH")"

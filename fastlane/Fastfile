@@ -1,0 +1,34 @@
+opt_out_usage
+default_platform(:ios)
+
+platform :ios do
+  def connect_key
+    app_store_connect_api_key(
+      key_id: ENV.fetch("APPSTORE_KEY_ID"),
+      issuer_id: ENV.fetch("APPSTORE_ISSUER_ID"),
+      key_content: ENV.fetch("APPSTORE_PRIVATE_KEY"),
+      is_key_content_base64: false
+    )
+  end
+
+  lane :ensure_app do
+    produce(
+      api_key: connect_key,
+      app_identifier: "com.praveenmurugesan.Shift",
+      app_name: "Shift",
+      language: "English",
+      sku: "shift-jetlag-001",
+      team_id: "DNQVHANQBU"
+    )
+  end
+
+  lane :fetch_profile do
+    sigh(
+      api_key: connect_key,
+      app_identifier: "com.praveenmurugesan.Shift",
+      team_id: "DNQVHANQBU",
+      force: true,
+      output_path: ENV.fetch("RUNNER_TEMP")
+    )
+  end
+end
