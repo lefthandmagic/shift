@@ -34,7 +34,7 @@ GitHub → Actions → **iOS Release Upload** → Run workflow (`upload_to_testf
 Create the App Store Connect **app record once** in the web UI (API keys cannot CREATE apps):
 
 - https://appstoreconnect.apple.com → My Apps → **+** → iOS
-- Name: **Shift**
+- Name: **Shift Jet Lag** (`Shift` is taken on the App Store; the phone icon can still say Shift)
 - Bundle ID: `com.praveenmurugesan.Shift`
 - SKU: `shift-jetlag-001`
 
