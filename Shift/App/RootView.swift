@@ -27,28 +27,21 @@ struct TodayView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let plan = model.today {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
-                                .font(.title2.weight(.semibold))
-                            Spacer()
-                            Text(plan.clockCity)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.secondary)
-                        }
-                        NowTimeline(plan: plan, allPlans: model.plans, now: model.now)
-                    } else {
-                        Text("No plan yet. Open Trips and generate a schedule.")
-                            .foregroundStyle(.secondary)
-                    }
+            Group {
+                if let plan = model.today {
+                    NowTimeline(plan: plan, allPlans: model.plans, now: model.now)
+                        .padding(12)
+                } else {
+                    Text("No plan yet. Open Trips and generate a schedule.")
+                        .foregroundStyle(.secondary)
+                        .padding(16)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
-                .padding(16)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(ShiftTheme.bg.ignoresSafeArea())
             .navigationTitle("Shift")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

@@ -205,7 +205,8 @@ struct DayTimeline: View {
         }
         while cursor <= range.upperBound {
             hours.append(cursor)
-            cursor = cursor.addingTimeInterval(3600)
+            let step: TimeInterval = hourHeight < 28 ? 7200 : 3600
+            cursor = cursor.addingTimeInterval(step)
         }
         return ZStack(alignment: .topLeading) {
             ForEach(hours, id: \.self) { hour in
@@ -341,20 +342,23 @@ struct SlashOverlay: View {
     }
 }
 
-/// Live window around now.
+/// Live window around now — sized to fill Today without scrolling.
 struct NowTimeline: View {
+    /// 12 hours fills a phone screen at a tappable density. 24 hours would be ~22 pt/hour and pins would collide.
+    static let windowHours: Double = 12
+
     let plan: DayPlan
     var allPlans: [DayPlan] = []
     let now: Date
 
     var body: some View {
-        let start = now.addingTimeInterval(-20 * 60)
-        let end = now.addingTimeInterval(5.8 * 3600)
+        let start = now.addingTimeInterval(-30 * 60)
+        let end = start.addingTimeInterval(Self.windowHours * 3600)
         let window = start...end
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Next 6 hours")
+                    Text("Next 12 hours")
                         .font(.headline)
                     if let happening = TimelineLayout.happening(at: now, plan: plan) {
                         Text(happening)
@@ -363,14 +367,26 @@ struct NowTimeline: View {
                     }
                 }
                 Spacer()
-                Text(plan.clockCity)
+                Text("\(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone)) · \(plan.clockCity)")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
             }
-            DayTimeline(plan: plan, allPlans: allPlans, now: now, hourHeight: 40, rangeOverride: window)
+            GeometryReader { geo in
+                let hourHeight = geo.size.height / CGFloat(Self.windowHours)
+                DayTimeline(
+                    plan: plan,
+                    allPlans: allPlans,
+                    now: now,
+                    hourHeight: hourHeight,
+                    rangeOverride: window
+                )
+            }
+            .frame(maxHeight: .infinity)
             TimelineLegend()
         }
-        .padding(16)
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(ShiftTheme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
