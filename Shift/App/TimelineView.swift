@@ -2,7 +2,7 @@ import SwiftUI
 
 struct TimelineBand: Identifiable {
     enum Kind {
-        case sleep, seekLight, avoidLight, caffeineOk
+        case sleep, seekLight, avoidLight, flight
     }
 
     let start: Date
@@ -19,7 +19,7 @@ struct TimelineBand: Identifiable {
         case .sleep: return ShiftTheme.sleep
         case .seekLight: return ShiftTheme.seekLight
         case .avoidLight: return ShiftTheme.avoidLight
-        case .caffeineOk: return ShiftTheme.caffeine
+        case .flight: return ShiftTheme.flight
         }
     }
 }
@@ -36,6 +36,10 @@ enum TimelineLayout {
             dates.append(avoid.end)
         }
         dates.append(contentsOf: plan.actions.map(\.date))
+        if let flight = plan.inFlight {
+            dates.append(flight.start)
+            dates.append(flight.end)
+        }
         let start = dates.min() ?? plan.dayStart
         let end = dates.max() ?? plan.targetWake
         let padStart = start.addingTimeInterval(-30 * 60)
@@ -45,14 +49,22 @@ enum TimelineLayout {
 
     static func bands(for plan: DayPlan) -> [TimelineBand] {
         var out: [TimelineBand] = []
-        if let ok = plan.actions.first(where: { $0.kind == .caffeineOk }), plan.caffeineCutoff > ok.date {
-            out.append(TimelineBand(start: ok.date, end: plan.caffeineCutoff, kind: .caffeineOk, title: "Coffee"))
+        if let flight = plan.inFlight, flight.end > flight.start {
+            out.append(TimelineBand(start: flight.start, end: flight.end, kind: .flight, title: "Flight"))
+            let down = plan.actions.first { $0.title == "Shades down" }
+            let up = plan.actions.first { $0.title == "Shades up" }
+            if let down, let up, up.date > down.date {
+                out.append(TimelineBand(start: down.date, end: min(up.date, flight.end), kind: .avoidLight, title: "Shades down"))
+            }
+            if let up, flight.end > up.date {
+                out.append(TimelineBand(start: up.date, end: flight.end, kind: .seekLight, title: "Shades up"))
+            }
         }
         if let seek = plan.lightSeek, seek.end > seek.start {
-            out.append(TimelineBand(start: seek.start, end: seek.end, kind: .seekLight, title: "Outdoor light"))
+            out.append(TimelineBand(start: seek.start, end: seek.end, kind: .seekLight, title: "Light"))
         }
         if let avoid = plan.lightAvoid, avoid.end > avoid.start {
-            out.append(TimelineBand(start: avoid.start, end: avoid.end, kind: .avoidLight, title: "Low light"))
+            out.append(TimelineBand(start: avoid.start, end: avoid.end, kind: .avoidLight, title: "Dim"))
         }
         if plan.targetWake > plan.targetSleep {
             out.append(TimelineBand(start: plan.targetSleep, end: plan.targetWake, kind: .sleep, title: "Sleep"))
@@ -73,9 +85,11 @@ enum TimelineLayout {
         plan.actions.filter { action in
             guard range.contains(action.date) else { return false }
             switch action.kind {
-            case .wake, .sleep, .caffeineCutoff, .melatonin, .nap, .hydrate, .note:
+            case .wake, .sleep, .caffeineCutoff, .melatonin, .nap, .stayAwake, .land, .note:
                 return true
-            case .seekLight, .avoidLight, .caffeineOk, .move:
+            case .seekLight, .avoidLight:
+                return action.title.hasPrefix("Shades")
+            case .caffeineOk, .move, .hydrate:
                 return false
             }
         }
@@ -83,11 +97,21 @@ enum TimelineLayout {
     }
 
     static func happening(at date: Date, plan: DayPlan) -> String? {
+        if let flight = plan.inFlight, date >= flight.start && date < flight.end {
+            if let down = plan.actions.first(where: { $0.title == "Shades down" }),
+               let up = plan.actions.first(where: { $0.title == "Shades up" }),
+               date >= down.date && date < up.date {
+                return "On the plane · shades down"
+            }
+            if plan.actions.contains(where: { $0.title == "Shades up" && date >= $0.date }) {
+                return "On the plane · shades up"
+            }
+            return "On the plane"
+        }
         let hits = bands(for: plan).filter { date >= $0.start && date < $0.end }
-        if hits.contains(where: { $0.kind == .sleep }) { return "Sleep window" }
+        if hits.contains(where: { $0.kind == .sleep }) { return "Sleep" }
         if hits.contains(where: { $0.kind == .avoidLight }) { return "Keep light low" }
         if hits.contains(where: { $0.kind == .seekLight }) { return "Get outdoor light" }
-        if hits.contains(where: { $0.kind == .caffeineOk }) { return "Coffee is OK" }
         return nil
     }
 
@@ -104,6 +128,7 @@ enum TimelineLayout {
 /// Full vertical day — hour rail, color bands, icons you can tap.
 struct DayTimeline: View {
     let plan: DayPlan
+    var allPlans: [DayPlan] = []
     var now: Date? = nil
     var hourHeight: CGFloat = 34
     var rangeOverride: ClosedRange<Date>? = nil
@@ -111,8 +136,14 @@ struct DayTimeline: View {
     @State private var selected: ActionItem?
 
     private var range: ClosedRange<Date> { rangeOverride ?? TimelineLayout.range(for: plan) }
-    private var bands: [TimelineBand] { TimelineLayout.visibleBands(for: plan, in: range) }
-    private var pins: [ActionItem] { TimelineLayout.pins(for: plan, in: range) }
+    private var sources: [DayPlan] { allPlans.isEmpty ? [plan] : allPlans }
+    private var bands: [TimelineBand] {
+        sources.flatMap { TimelineLayout.visibleBands(for: $0, in: range) }
+    }
+    private var pins: [ActionItem] {
+        sources.flatMap { TimelineLayout.pins(for: $0, in: range) }
+            .sorted { $0.date < $1.date }
+    }
 
     var body: some View {
         let h = TimelineLayout.height(range: range, hourHeight: hourHeight)
@@ -205,9 +236,9 @@ struct DayTimeline: View {
             ForEach(bands) { band in
                 let y = TimelineLayout.y(date: band.start, range: range, hourHeight: hourHeight)
                 let h = max(16, TimelineLayout.y(date: band.end, range: range, hourHeight: hourHeight) - y)
-                let inset: CGFloat = band.kind == .caffeineOk ? 10 : 0
+                let inset: CGFloat = band.kind == .flight ? 0 : (band.kind == .sleep ? 4 : 10)
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(band.color.opacity(band.kind == .sleep ? 0.42 : 0.26))
+                    .fill(band.color.opacity(band.kind == .sleep ? 0.42 : band.kind == .flight ? 0.22 : 0.26))
                     .overlay {
                         if band.kind == .avoidLight {
                             SlashOverlay(color: band.color)
@@ -310,33 +341,25 @@ struct SlashOverlay: View {
     }
 }
 
-/// Timeshifter-style 3-hour window around now.
+/// Live window around now.
 struct NowTimeline: View {
     let plan: DayPlan
+    var allPlans: [DayPlan] = []
     let now: Date
-    var next: ActionItem? = nil
 
     var body: some View {
-        let start = now.addingTimeInterval(-40 * 60)
-        let end = now.addingTimeInterval(2.6 * 3600)
+        let start = now.addingTimeInterval(-20 * 60)
+        let end = now.addingTimeInterval(5.8 * 3600)
         let window = start...end
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Next 3 hours")
+                    Text("Next 6 hours")
                         .font(.headline)
                     if let happening = TimelineLayout.happening(at: now, plan: plan) {
                         Text(happening)
                             .font(.caption.weight(.medium))
                             .foregroundStyle(ShiftTheme.accent)
-                    } else if let next {
-                        Text("Next · \(next.title) · \(ClockMath.format(next.date, timeZone: plan.timeZone))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("Quiet stretch")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
                 }
                 Spacer()
@@ -344,7 +367,7 @@ struct NowTimeline: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
-            DayTimeline(plan: plan, now: now, hourHeight: 54, rangeOverride: window)
+            DayTimeline(plan: plan, allPlans: allPlans, now: now, hourHeight: 40, rangeOverride: window)
             TimelineLegend()
         }
         .padding(16)
@@ -370,13 +393,13 @@ struct DayRibbon: View {
                     let x = geo.size.width * CGFloat(band.start.timeIntervalSince(range.lowerBound) / span)
                     let w = geo.size.width * CGFloat(band.end.timeIntervalSince(band.start) / span)
                     Capsule()
-                        .fill(band.color.opacity(band.kind == .avoidLight ? 0.55 : 0.85))
-                        .frame(width: max(4, w), height: 8)
+                        .fill(band.color.opacity(band.kind == .avoidLight ? 0.55 : 0.9))
+                        .frame(width: max(5, w), height: 12)
                         .offset(x: max(0, x))
                 }
             }
         }
-        .frame(height: 8)
+        .frame(height: 12)
     }
 }
 
@@ -393,6 +416,8 @@ enum ShiftIcons {
         case .note: return "star.fill"
         case .nap: return "zzz"
         case .melatonin: return "pills"
+        case .stayAwake: return "eye.fill"
+        case .land: return "airplane.arrival"
         }
     }
 
@@ -407,6 +432,8 @@ enum ShiftIcons {
         case .nap: return ShiftTheme.advance
         case .hydrate: return ShiftTheme.hold
         case .note, .move: return ShiftTheme.accent
+        case .stayAwake: return ShiftTheme.flight
+        case .land: return ShiftTheme.flight
         }
     }
 }
@@ -417,7 +444,7 @@ struct TimelineLegend: View {
             legend(ShiftTheme.seekLight, "Light")
             legend(ShiftTheme.avoidLight, "Dim")
             legend(ShiftTheme.sleep, "Sleep")
-            legend(ShiftTheme.caffeine, "Coffee")
+            legend(ShiftTheme.flight, "Flight")
         }
         .font(.caption2)
         .foregroundStyle(.secondary)

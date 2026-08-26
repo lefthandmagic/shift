@@ -22,7 +22,7 @@ final class NotificationScheduler {
     func schedule(plans: [DayPlan], now: Date) async {
         Self.center.removeAllPendingNotificationRequests()
         let horizon = now.addingTimeInterval(3 * 86_400)
-        let kinds: Set<ActionKind> = [.seekLight, .avoidLight, .caffeineCutoff, .caffeineOk, .sleep, .wake, .nap, .melatonin]
+        let kinds: Set<ActionKind> = [.seekLight, .avoidLight, .caffeineCutoff, .sleep, .wake, .nap, .melatonin, .stayAwake]
         var count = 0
         for plan in plans {
             for action in plan.actions where kinds.contains(action.kind) {

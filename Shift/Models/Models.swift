@@ -19,6 +19,8 @@ enum ActionKind: String, Codable, Equatable {
     case nap
     case melatonin
     case caffeineOk
+    case stayAwake
+    case land
 }
 
 struct ActionItem: Identifiable, Equatable {
@@ -53,6 +55,8 @@ struct DayPlan: Identifiable, Equatable {
     let summary: String
     let actions: [ActionItem]
     let constraintNote: String?
+    /// Takeoff→landing when this day includes a flight (shown as a timeline block).
+    let inFlight: DateInterval?
 
     var hoursOff: Double { abs(bodyMinusLocalHours) }
 
@@ -181,7 +185,19 @@ struct Trip: Codable, Equatable, Identifiable {
     }
 
     var routeSummary: String {
-        segments.map(\.name).joined(separator: " → ")
+        compactRoute
+    }
+
+    /// Cities only, consecutive duplicates and flight legs dropped.
+    var compactRoute: String {
+        var cities: [String] = []
+        for segment in segments where !segment.isFlight {
+            let city = DayPlan.clockCity(from: segment.name)
+            if cities.last != city {
+                cities.append(city)
+            }
+        }
+        return cities.joined(separator: " → ")
     }
 
     var dateSpanLabel: String {

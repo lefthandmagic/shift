@@ -99,6 +99,36 @@ final class PlanEngineTests: XCTestCase {
                       || saturday[0].constraintNote?.contains("Land") == true)
     }
 
+    func testSaturdayFlightIsOnTheTimeline() {
+        let et = Trips.newYork
+        let saturday = plans.first {
+            $0.locationName.contains("Miami")
+                && ClockMath.format($0.dayStart, timeZone: et, template: "d MMM") == "29 Aug"
+        }
+        XCTAssertNotNil(saturday?.inFlight)
+        XCTAssertEqual(saturday?.inFlight?.start, ClockMath.date(year: 2026, month: 8, day: 29, hour: 10, minute: 30, timeZone: Trips.amsterdam))
+        XCTAssertTrue(saturday!.actions.contains { $0.kind == .stayAwake })
+        XCTAssertTrue(saturday!.actions.contains { $0.title == "Shades down" })
+        XCTAssertTrue(saturday!.actions.contains { $0.title == "Shades up" })
+        XCTAssertTrue(saturday!.actions.contains { $0.kind == .land })
+        let friday = plans.first {
+            $0.locationName == "Amsterdam"
+                && ClockMath.format($0.dayStart, timeZone: Trips.amsterdam, template: "d MMM") == "28 Aug"
+        }
+        XCTAssertFalse(friday!.actions.contains { $0.title == "On the plane" })
+        XCTAssertFalse(friday!.actions.contains { $0.kind == .stayAwake })
+        let midday = ClockMath.date(year: 2026, month: 8, day: 29, hour: 12, minute: 0, timeZone: Trips.amsterdam)
+        let current = PlanEngine.plan(for: midday, in: plans)
+        XCTAssertTrue(current?.locationName.contains("Miami") == true)
+    }
+
+    func testCompactRouteDropsDuplicateCitiesAndFlights() {
+        XCTAssertEqual(
+            trip.compactRoute,
+            "Amsterdam → Miami → Atlanta → Los Angeles → San Francisco → Amsterdam"
+        )
+    }
+
     func testTuesdayNightIsAtlantaNotMiami() {
         let et = Trips.newYork
         let tuesdayMiami = plans.filter {

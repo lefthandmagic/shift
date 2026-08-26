@@ -23,7 +23,7 @@ struct TripsView: View {
                                     Text(trip.dateSpanLabel)
                                         .font(.subheadline.monospacedDigit())
                                         .foregroundStyle(.secondary)
-                                    Text(trip.routeSummary)
+                                    Text(trip.compactRoute)
                                         .font(.caption)
                                         .foregroundStyle(.tertiary)
                                         .lineLimit(2)
@@ -41,40 +41,23 @@ struct TripsView: View {
                             }
                         }
                     }
-                } header: {
-                    Text("Your trips")
-                } footer: {
-                    Text("Select a trip to make it active, then generate its shift schedule. Edit stops in the itinerary.")
                 }
 
-                Section("Build a plan") {
+                Section {
                     Button {
                         model.generatePlan()
                     } label: {
-                        Label("Generate schedule for \(model.trip.name)", systemImage: "sparkles")
+                        Label("Generate schedule", systemImage: "sparkles")
                     }
                     NavigationLink {
                         ItineraryView()
                     } label: {
                         Label("Edit itinerary", systemImage: "pencil")
                     }
-                }
-
-                Section("Add") {
                     Button {
                         model.addTrip(Trips.blank())
                     } label: {
-                        Label("New blank trip", systemImage: "plus")
-                    }
-                    Button {
-                        model.duplicateActive()
-                    } label: {
-                        Label("Duplicate current trip", systemImage: "plus.square.on.square")
-                    }
-                    Button {
-                        model.addTrip(Trips.usAugust2026())
-                    } label: {
-                        Label("Add US Aug–Sep 2026 template", systemImage: "airplane.departure")
+                        Label("New trip", systemImage: "plus")
                     }
                 }
             }

@@ -43,24 +43,3 @@ struct ShiftCard<Content: View>: View {
         )
     }
 }
-
-struct KindBadge: View {
-    let kind: ShiftKind
-    var body: some View {
-        Text(label)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .foregroundStyle(ShiftTheme.color(for: kind))
-            .background(ShiftTheme.color(for: kind).opacity(0.16), in: Capsule())
-    }
-
-    private var label: String {
-        switch kind {
-        case .delay: return "LATER"
-        case .advance: return "EARLIER"
-        case .flight: return "FLIGHT"
-        case .hold: return "LOCAL"
-        }
-    }
-}

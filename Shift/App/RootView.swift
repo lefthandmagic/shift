@@ -28,40 +28,21 @@ struct TodayView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
-                    tripChip
+                VStack(alignment: .leading, spacing: 16) {
                     if let plan = model.today {
-                        clocks(plan)
-                        if let note = plan.constraintNote {
-                            constraintBanner(note)
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
+                                .font(.title2.weight(.semibold))
+                            Spacer()
+                            Text(plan.clockCity)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
                         }
-                        NowTimeline(plan: plan, now: model.now, next: model.nextAction)
-                        NavigationLink {
-                            DayDetailView(plan: plan)
-                        } label: {
-                            HStack {
-                                Text("Full day timeline")
-                                    .font(.subheadline.weight(.semibold))
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 16)
-                            .background(ShiftTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                        Text(plan.summary)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        NowTimeline(plan: plan, allPlans: model.plans, now: model.now)
                     } else {
-                        Text("No plan for today. Open Trips and generate a schedule.")
+                        Text("No plan yet. Open Trips and generate a schedule.")
                             .foregroundStyle(.secondary)
                     }
-                    Text("Not medical advice. Light, sleep timing, and caffeine are the levers — skip anything that fights how you feel.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
                 }
                 .padding(16)
             }
@@ -70,79 +51,6 @@ struct TodayView: View {
             .navigationBarTitleDisplayMode(.large)
         }
     }
-
-    private var tripChip: some View {
-        Button {
-            model.selectedTab = 2
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(model.trip.name)
-                        .font(.subheadline.weight(.semibold))
-                    Text(model.trip.dateSpanLabel)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text("Switch")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(ShiftTheme.accent)
-            }
-            .padding(12)
-            .background(ShiftTheme.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func clocks(_ plan: DayPlan) -> some View {
-        ShiftCard(tint: ShiftTheme.color(for: plan.kind)) {
-            HStack {
-                KindBadge(kind: plan.kind)
-                Spacer()
-                Text(plan.locationName)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
-            Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
-                .font(.title2.weight(.semibold))
-            HStack(alignment: .firstTextBaseline, spacing: 24) {
-                clockColumn(
-                    label: "Local",
-                    time: ClockMath.format(model.now, timeZone: plan.timeZone, template: "HH:mm"),
-                    sub: ClockMath.formatWhen(model.now, timeZone: plan.timeZone, city: plan.clockCity)
-                )
-                clockColumn(
-                    label: "Body clock",
-                    time: ClockMath.format(plan.bodyClockTime(at: model.now), timeZone: plan.timeZone, template: "HH:mm"),
-                    sub: plan.hoursOff < 0.4 ? "Matched" : String(format: "%.1fh off", plan.hoursOff)
-                )
-            }
-        }
-    }
-
-    private func clockColumn(label: String, time: String, sub: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(time)
-                .font(.system(size: 36, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-            Text(sub)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func constraintBanner(_ note: String) -> some View {
-        ShiftCard(tint: ShiftTheme.accent) {
-            Label(note, systemImage: "airplane.departure")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(ShiftTheme.accent)
-        }
-    }
-
 }
 
 struct PlanView: View {
@@ -156,31 +64,28 @@ struct PlanView: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
-                                    .font(.headline)
-                                Text(plan.locationName)
+                            Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
+                                .font(.headline)
+                            Spacer()
+                            HStack(spacing: 6) {
+                                if plan.inFlight != nil {
+                                    Image(systemName: "airplane")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(ShiftTheme.flight)
+                                }
+                                Text(plan.clockCity)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
-                            Spacer()
-                            KindBadge(kind: plan.kind)
                         }
                         DayRibbon(plan: plan)
-                        HStack {
-                            Text(ClockMath.format(plan.targetSleep, timeZone: plan.timeZone) + "–" + ClockMath.format(plan.targetWake, timeZone: plan.timeZone))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(plan.clockCity)
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
-                        if let note = plan.constraintNote {
-                            Text(note)
-                                .font(.caption2)
-                                .foregroundStyle(ShiftTheme.accent)
-                        }
+                        Text(
+                            ClockMath.format(plan.targetSleep, timeZone: plan.timeZone)
+                                + "–"
+                                + ClockMath.format(plan.targetWake, timeZone: plan.timeZone)
+                        )
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 4)
                 }
@@ -191,7 +96,7 @@ struct PlanView: View {
             .navigationTitle("Plan")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink("Edit itinerary") {
+                    NavigationLink("Edit") {
                         ItineraryView()
                     }
                 }
@@ -215,27 +120,23 @@ struct DayDetailView: View {
             ForEach(model.plans) { item in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        HStack {
+                        HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(ClockMath.formatDay(item.dayStart, timeZone: item.timeZone))
                                     .font(.title.weight(.semibold))
-                                Text("\(item.locationName) · \(item.clockCity) time")
+                                Text(item.clockCity)
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            KindBadge(kind: item.kind)
-                        }
-                        if let note = item.constraintNote {
-                            Text(note)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(ShiftTheme.accent)
+                            if item.inFlight != nil {
+                                Label("Flight", systemImage: "airplane")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(ShiftTheme.flight)
+                            }
                         }
                         TimelineLegend()
                         DayTimeline(plan: item, now: model.now, hourHeight: 36)
                             .padding(.bottom, 8)
-                        Text(item.summary)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
                     }
                     .padding(16)
                 }
@@ -274,7 +175,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Home sleep")
                 } footer: {
-                    Text("Airport lead is how early you must be awake before a flight. A 10:30 long-haul with 3 h lead means wake by 07:30 — not 11:00.")
+                    Text("How early you need to be up before a long-haul. 3 h before a 10:30 flight means wake by 07:30.")
                 }
                 Section {
                     Toggle("Use melatonin", isOn: $model.schedule.useMelatonin)
@@ -284,26 +185,25 @@ struct SettingsView: View {
                 } header: {
                     Text("Melatonin")
                 } footer: {
-                    Text("Off by default. If on, Shift times a low dose on shift days. Optional. Not medical advice — ask a clinician.")
+                    Text("Off by default. Optional low dose, timed on shift days. Ask a clinician.")
                 }
                 Section("Alerts") {
                     Toggle("Timed reminders", isOn: $model.notificationsOn)
                 }
-                Section("Active trip") {
+                Section("Trip") {
                     NavigationLink {
                         ItineraryView()
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(model.trip.name)
-                            Text(model.trip.routeSummary)
+                            Text(model.trip.compactRoute)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(3)
+                            Text(model.trip.dateSpanLabel)
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
                         }
                     }
-                }
-                Section("About") {
-                    Text("Shift times light, sleep, and caffeine around timezone jumps. It is a coach, not a doctor.")
                 }
             }
             .scrollContentBackground(.hidden)

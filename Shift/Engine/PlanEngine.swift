@@ -98,6 +98,12 @@ enum PlanEngine {
     }
 
     static func plan(for date: Date, in plans: [DayPlan]) -> DayPlan? {
+        if let flying = plans.first(where: { plan in
+            guard let flight = plan.inFlight else { return false }
+            return date >= flight.start && date < flight.end
+        }) {
+            return flying
+        }
         let sorted = plans.sorted { $0.targetSleep < $1.targetSleep }
         if let covering = sorted.last(where: {
             date >= $0.targetSleep.addingTimeInterval(-4 * 3600)
@@ -219,6 +225,17 @@ enum PlanEngine {
         let caffeineCutoff = targetSleep.addingTimeInterval(-8 * 3600)
         let wake = targetWake
         let arrival = inboundFlight(on: dayStart, tz: tz, trip: trip)
+        let ownFlight = trip.segments.first { $0.isFlight && $0.name == locationName }
+        let flightBlock: TripSegment? = {
+            if isFlight { return ownFlight }
+            guard let arrival else { return nil }
+            let dest = arrival.timeZone
+            let startDay = ClockMath.startOfDay(arrival.start, timeZone: dest)
+            let endDay = ClockMath.startOfDay(arrival.end, timeZone: dest)
+            // Overnight flights already own a night row — don’t paste them onto landing day too.
+            guard abs(startDay.timeIntervalSince(endDay)) < 60 else { return nil }
+            return arrival
+        }()
         let (seek, avoid) = lightWindows(
             kind: kind,
             dayStart: dayStart,
@@ -310,49 +327,20 @@ enum PlanEngine {
         }
         actions.append(
             ActionItem(
-                date: targetSleep.addingTimeInterval(-30 * 60),
-                kind: .move,
-                title: "Wind down",
-                detail: "Dim lights from \(ClockMath.formatWhen(targetSleep.addingTimeInterval(-30 * 60), timeZone: tz, city: city))."
-            )
-        )
-        actions.append(
-            ActionItem(
                 date: targetSleep,
                 kind: .sleep,
-                title: "Sleep tonight",
+                title: "Sleep",
                 detail: ClockMath.formatSleepWindow(sleep: targetSleep, wake: targetWake, timeZone: tz, city: city)
             )
         )
-        if isFlight {
-            let takeoff = trip.segments.first(where: { $0.isFlight && $0.name == locationName })?.start ?? dayStart.addingTimeInterval(10 * 3600)
-            actions.append(
-                ActionItem(
-                    date: takeoff,
-                    kind: .hydrate,
-                    title: "Hydrate on the plane",
-                    detail: "Water over alcohol."
-                )
-            )
-            actions.append(
-                ActionItem(
-                    date: takeoff.addingTimeInterval(2 * 3600),
-                    kind: .nap,
-                    title: "Optional plane nap",
-                    detail: "Stay awake if you can. If wrecked, one 60–90 min nap max — not a full night. Sleep on board only if it overlaps tonight’s \(city) window."
-                )
-            )
-        }
-        let outbound = trip.segments.first { $0.isFlight && abs($0.start.timeIntervalSince(wake)) < 6 * 3600 }
-        if let flight = outbound, !isFlight {
-            actions.append(
-                ActionItem(
-                    date: flight.start,
-                    kind: .nap,
-                    title: "On the plane",
-                    detail: "Stay awake if you can. Optional 60–90 min nap. Window shades down in the morning, up later. No full sleep — tonight is at destination."
-                )
-            )
+        if let flightBlock {
+            actions.append(contentsOf: flightPhases(
+                flight: flightBlock,
+                destTZ: tz,
+                city: city,
+                sleep: targetSleep,
+                wake: targetWake
+            ))
         }
         if arrival != nil, !isFlight {
             let napEndLimit = targetSleep.addingTimeInterval(-6 * 3600)
@@ -373,11 +361,13 @@ enum PlanEngine {
                     date: event.start,
                     kind: .note,
                     title: event.name,
-                    detail: "\(ClockMath.formatWhen(event.start, timeZone: tz, city: city))–\(ClockMath.format(event.end, timeZone: tz)). Bedtime after this."
+                    detail: "\(ClockMath.formatWhen(event.start, timeZone: tz, city: city))–\(ClockMath.format(event.end, timeZone: tz))."
                 )
             )
         }
         actions.sort { $0.date < $1.date }
+
+        let inFlight = flightBlock.map { DateInterval(start: $0.start, end: $0.end) }
 
         return DayPlan(
             dayStart: dayStart,
@@ -393,7 +383,8 @@ enum PlanEngine {
             headline: headline,
             summary: summary,
             actions: actions,
-            constraintNote: constraintNote
+            constraintNote: constraintNote,
+            inFlight: inFlight
         )
     }
 
@@ -422,6 +413,96 @@ enum PlanEngine {
             let landDay = ClockMath.startOfDay(flight.end, timeZone: tz)
             return abs(landDay.timeIntervalSince(dayStart)) < 60
         }
+    }
+
+    /// Timeshifter-style in-flight phases: stay awake vs sleep, shades down/up, optional nap, land.
+    private static func flightPhases(
+        flight: TripSegment,
+        destTZ: TimeZone,
+        city: String,
+        sleep: Date,
+        wake: Date
+    ) -> [ActionItem] {
+        let takeoff = flight.start
+        let land = flight.end
+        guard land > takeoff else { return [] }
+        let sleepOnBoard = sleep < land && wake > takeoff
+        var items: [ActionItem] = []
+
+        if sleepOnBoard {
+            items.append(
+                ActionItem(
+                    date: takeoff,
+                    kind: .avoidLight,
+                    title: "Shades down",
+                    detail: "On the plane. Shades down and sleep if it overlaps tonight’s \(city) window."
+                )
+            )
+            let up = min(max(wake, takeoff.addingTimeInterval(30 * 60)), land.addingTimeInterval(-20 * 60))
+            if up > takeoff && up < land {
+                items.append(
+                    ActionItem(
+                        date: up,
+                        kind: .seekLight,
+                        title: "Shades up",
+                        detail: "Shades up before landing. Get light if you can."
+                    )
+                )
+            }
+        } else {
+            items.append(
+                ActionItem(
+                    date: takeoff,
+                    kind: .stayAwake,
+                    title: "Stay awake",
+                    detail: "On the plane. Stay up if you can — sleep after landing in \(city), not a full night onboard."
+                )
+            )
+            let landDay = ClockMath.startOfDay(land, timeZone: destTZ)
+            var split = ClockMath.at(hour: 11, minute: 0, on: landDay, timeZone: destTZ)
+            if split <= takeoff || split >= land {
+                split = takeoff.addingTimeInterval(land.timeIntervalSince(takeoff) * 0.55)
+            }
+            items.append(
+                ActionItem(
+                    date: takeoff,
+                    kind: .avoidLight,
+                    title: "Shades down",
+                    detail: "Window shades down this part of the flight. Keep cabin light low."
+                )
+            )
+            items.append(
+                ActionItem(
+                    date: split,
+                    kind: .seekLight,
+                    title: "Shades up",
+                    detail: "Window shades up. Get light if you can — this is the shift."
+                )
+            )
+            if flight.durationHours >= 6 {
+                let napAt = takeoff.addingTimeInterval(2 * 3600)
+                if napAt < land.addingTimeInterval(-90 * 60) {
+                    items.append(
+                        ActionItem(
+                            date: napAt,
+                            kind: .nap,
+                            title: "Optional nap",
+                            detail: "If wrecked, 60–90 minutes. Not a full night."
+                        )
+                    )
+                }
+            }
+        }
+
+        items.append(
+            ActionItem(
+                date: land,
+                kind: .land,
+                title: "Land",
+                detail: "You’re in \(city). Follow the rest of today on the timeline."
+            )
+        )
+        return items
     }
 
     private static func lightWindows(
