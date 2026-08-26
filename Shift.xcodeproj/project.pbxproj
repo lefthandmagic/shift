@@ -10,6 +10,7 @@
 		09FDE822967A4C8F33842A66 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CEA1820CDE2B572E03ACBB64 /* Assets.xcassets */; };
 		0E211993A2739A81846C40D2 /* ItineraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDFD79A2294677D9BD3A774 /* ItineraryView.swift */; };
 		0ED35E1D4F34EE3050A1C9A2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4038F0B7593F78904CA9A2D2 /* RootView.swift */; };
+		2A9D4C7E1B6F83A05D4C9E12 /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B3C1E9A4D2F70B15C8A4E21 /* TimelineView.swift */; };
 		1ADE0C5CF29E4E14D10CA34F /* PlanEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ABCF018F379839D8BBD141 /* PlanEngine.swift */; };
 		5DA6B52EC7063BEB76568DB4 /* PlanEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23217D951C7FB16B7D8A7615 /* PlanEngineTests.swift */; };
 		71D83EF2E36BC5A194343021 /* Trips.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF408E320B6924AE890897AE /* Trips.swift */; };
@@ -38,6 +39,7 @@
 		23217D951C7FB16B7D8A7615 /* PlanEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanEngineTests.swift; sourceTree = "<group>"; };
 		34B6121F05BABD5D90D3AE4B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4038F0B7593F78904CA9A2D2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		8B3C1E9A4D2F70B15C8A4E21 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
 		40AB3BCBF03131F0CCF7C5A6 /* ShiftTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ShiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		94FB623E54F816BCE28F53EF /* ShiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftApp.swift; sourceTree = "<group>"; };
 		B6B7D9C79D778F22482154B9 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -69,6 +71,7 @@
 				CCDFD79A2294677D9BD3A774 /* ItineraryView.swift */,
 				4038F0B7593F78904CA9A2D2 /* RootView.swift */,
 				94FB623E54F816BCE28F53EF /* ShiftApp.swift */,
+				8B3C1E9A4D2F70B15C8A4E21 /* TimelineView.swift */,
 				34B6121F05BABD5D90D3AE4B /* Theme.swift */,
 				FD6B2521AF4984FC849866F0 /* TripsView.swift */,
 			);
@@ -244,6 +247,7 @@
 				1ADE0C5CF29E4E14D10CA34F /* PlanEngine.swift in Sources */,
 				0ED35E1D4F34EE3050A1C9A2 /* RootView.swift in Sources */,
 				C71B1AC7D902E26FB1A9209D /* ShiftApp.swift in Sources */,
+				2A9D4C7E1B6F83A05D4C9E12 /* TimelineView.swift in Sources */,
 				A15ABDA3C74B7A5BB8E4586A /* Theme.swift in Sources */,
 				71D83EF2E36BC5A194343021 /* Trips.swift in Sources */,
 				F91E9EA70159911C4BA964D8 /* TripsView.swift in Sources */,

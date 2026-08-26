@@ -18,6 +18,7 @@ struct RootView: View {
                 .tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
                 .tag(3)
         }
+        .toolbarBackground(ShiftTheme.bg, for: .tabBar)
     }
 }
 
@@ -34,9 +35,23 @@ struct TodayView: View {
                         if let note = plan.constraintNote {
                             constraintBanner(note)
                         }
-                        nextUp(plan)
-                        sleepCard(plan)
-                        lightCard(plan)
+                        NowTimeline(plan: plan, now: model.now, next: model.nextAction)
+                        NavigationLink {
+                            DayDetailView(plan: plan)
+                        } label: {
+                            HStack {
+                                Text("Full day timeline")
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(ShiftTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
                         Text(plan.summary)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -128,72 +143,6 @@ struct TodayView: View {
         }
     }
 
-    private func nextUp(_ plan: DayPlan) -> some View {
-        let action = model.nextAction
-        return ShiftCard {
-            Text("Next")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            if let action {
-                Label(action.title, systemImage: symbol(action.kind))
-                    .font(.title3.weight(.semibold))
-                Text(ClockMath.formatWhen(action.date, timeZone: plan.timeZone, city: plan.clockCity))
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(ShiftTheme.accent)
-                Text(action.detail)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("You’re through today’s list. Sleep \(ClockMath.formatWhen(plan.targetSleep, timeZone: plan.timeZone, city: plan.clockCity)).")
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func sleepCard(_ plan: DayPlan) -> some View {
-        ShiftCard {
-            Label("Sleep window", systemImage: "bed.double.fill")
-                .font(.headline)
-            Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone, city: plan.clockCity))
-                .font(.title3.monospacedDigit())
-            Text("Caffeine off after \(ClockMath.formatWhen(plan.caffeineCutoff, timeZone: plan.timeZone, city: plan.clockCity))")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func lightCard(_ plan: DayPlan) -> some View {
-        ShiftCard {
-            Label("Light", systemImage: "sun.max.fill")
-                .font(.headline)
-            if let seek = plan.lightSeek {
-                Text("Get outdoor light  \(ClockMath.formatWhen(seek.start, timeZone: plan.timeZone))–\(ClockMath.format(seek.end, timeZone: plan.timeZone))")
-            }
-            if let avoid = plan.lightAvoid {
-                Text("Keep light low \(ClockMath.formatWhen(avoid.start, timeZone: plan.timeZone))–\(ClockMath.format(avoid.end, timeZone: plan.timeZone))")
-                    .foregroundStyle(.secondary)
-            }
-            if plan.lightSeek == nil && plan.lightAvoid == nil {
-                Text("No special light window today.")
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func symbol(_ kind: ActionKind) -> String {
-        switch kind {
-        case .seekLight: return "sun.max.fill"
-        case .avoidLight: return "moon.zzz.fill"
-        case .sleep: return "moon.fill"
-        case .wake: return "sunrise.fill"
-        case .caffeineCutoff, .caffeineOk: return "cup.and.saucer.fill"
-        case .move: return "figure.walk"
-        case .hydrate: return "drop.fill"
-        case .note: return "star.fill"
-        case .nap: return "zzz"
-        case .melatonin: return "pills"
-        }
-    }
 }
 
 struct PlanView: View {
@@ -205,36 +154,35 @@ struct PlanView: View {
                 NavigationLink {
                     DayDetailView(plan: plan)
                 } label: {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
-                                .font(.headline)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
+                                    .font(.headline)
+                                Text(plan.locationName)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
                             Spacer()
                             KindBadge(kind: plan.kind)
                         }
-                        Text(plan.locationName)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text("\(plan.clockCity) time")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                        Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone, city: plan.clockCity))
-                            .font(.subheadline.monospacedDigit())
-                        Text("Coffee until \(ClockMath.formatWhen(plan.caffeineCutoff, timeZone: plan.timeZone, city: plan.clockCity))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if let seek = plan.lightSeek {
-                            Text("Light \(ClockMath.formatWhen(seek.start, timeZone: plan.timeZone))–\(ClockMath.format(seek.end, timeZone: plan.timeZone))")
-                                .font(.caption)
+                        DayRibbon(plan: plan)
+                        HStack {
+                            Text(ClockMath.format(plan.targetSleep, timeZone: plan.timeZone) + "–" + ClockMath.format(plan.targetWake, timeZone: plan.timeZone))
+                                .font(.caption.monospacedDigit())
                                 .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(plan.clockCity)
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
                         }
                         if let note = plan.constraintNote {
                             Text(note)
-                                .font(.caption)
+                                .font(.caption2)
                                 .foregroundStyle(ShiftTheme.accent)
                         }
                     }
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 4)
                 }
                 .listRowBackground(ShiftTheme.card)
             }
@@ -253,69 +201,52 @@ struct PlanView: View {
 }
 
 struct DayDetailView: View {
+    @EnvironmentObject private var model: AppModel
     let plan: DayPlan
+    @State private var selected: Date
+
+    init(plan: DayPlan) {
+        self.plan = plan
+        _selected = State(initialValue: plan.dayStart)
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                ShiftCard(tint: ShiftTheme.color(for: plan.kind)) {
-                    KindBadge(kind: plan.kind)
-                    Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
-                        .font(.title.weight(.semibold))
-                    Text(plan.locationName)
-                        .foregroundStyle(.secondary)
-                    Text(plan.headline)
-                        .font(.headline)
-                }
-                if let note = plan.constraintNote {
-                    ShiftCard(tint: ShiftTheme.accent) {
-                        Label(note, systemImage: "airplane.departure")
-                            .font(.subheadline.weight(.medium))
-                    }
-                }
-                ShiftCard {
-                    Text("Sleep")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone, city: plan.clockCity))
-                        .font(.title3.monospacedDigit())
-                    Text("Caffeine off \(ClockMath.formatWhen(plan.caffeineCutoff, timeZone: plan.timeZone, city: plan.clockCity))")
-                        .foregroundStyle(.secondary)
-                }
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Timeline")
-                        .font(.headline)
-                        .padding(.bottom, 8)
-                    ForEach(plan.actions) { action in
-                        HStack(alignment: .top, spacing: 12) {
-                            Text(ClockMath.formatWhen(action.date, timeZone: plan.timeZone))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(ShiftTheme.accent)
-                                .frame(width: 108, alignment: .leading)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(plan.clockCity)
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                                Text(action.title)
-                                    .font(.subheadline.weight(.semibold))
-                                Text(action.detail)
-                                    .font(.caption)
+        TabView(selection: $selected) {
+            ForEach(model.plans) { item in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(ClockMath.formatDay(item.dayStart, timeZone: item.timeZone))
+                                    .font(.title.weight(.semibold))
+                                Text("\(item.locationName) · \(item.clockCity) time")
                                     .foregroundStyle(.secondary)
                             }
+                            Spacer()
+                            KindBadge(kind: item.kind)
                         }
-                        .padding(.vertical, 10)
-                        Divider().overlay(ShiftTheme.stroke)
+                        if let note = item.constraintNote {
+                            Text(note)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(ShiftTheme.accent)
+                        }
+                        TimelineLegend()
+                        DayTimeline(plan: item, now: model.now, hourHeight: 36)
+                            .padding(.bottom, 8)
+                        Text(item.summary)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
+                    .padding(16)
                 }
-                Text(plan.summary)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                .tag(item.dayStart)
             }
-            .padding(16)
         }
+        .tabViewStyle(.page(indexDisplayMode: .automatic))
         .background(ShiftTheme.bg.ignoresSafeArea())
-        .navigationTitle(plan.locationName)
+        .navigationTitle("Timeline")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear { selected = plan.dayStart }
     }
 }
 

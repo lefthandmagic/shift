@@ -9,6 +9,12 @@ enum ShiftTheme {
     static let advance = Color(red: 0.45, green: 0.72, blue: 1.0)
     static let flight = Color(red: 0.73, green: 0.55, blue: 1.0)
     static let hold = Color(red: 0.46, green: 0.84, blue: 0.62)
+    static let sleep = Color(red: 0.35, green: 0.42, blue: 0.95)
+    static let seekLight = Color(red: 1.0, green: 0.84, blue: 0.24)
+    static let avoidLight = Color(red: 0.45, green: 0.48, blue: 0.58)
+    static let caffeine = Color(red: 0.78, green: 0.52, blue: 0.32)
+    static let now = Color(red: 1.0, green: 0.35, blue: 0.38)
+
 
     static func color(for kind: ShiftKind) -> Color {
         switch kind {
