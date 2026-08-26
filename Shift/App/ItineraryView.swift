@@ -218,12 +218,14 @@ struct EventEditorView: View {
 
     var body: some View {
         Form {
-            Section("Event") {
+            Section {
                 TextField("Name", text: $draft.name)
                 DatePicker("Starts", selection: $draft.start)
                     .environment(\.timeZone, model.trip.homeTimeZone)
                 DatePicker("Ends", selection: $draft.end)
                     .environment(\.timeZone, model.trip.homeTimeZone)
+            } header: {
+                Text("Event")
             } footer: {
                 Text("Event times use the trip’s home timezone (\(model.trip.homeTimeZone.identifier)). Shift uses this to keep bedtime after the event on that day.")
             }

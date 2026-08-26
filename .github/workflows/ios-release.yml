@@ -152,7 +152,7 @@ jobs:
               -project "Shift.xcodeproj" \
               -scheme "Shift" \
               -configuration Debug \
-              -destination "generic/platform=iOS" \
+              -destination "generic/platform=iOS Simulator" \
               CODE_SIGNING_ALLOWED=NO \
               build-for-testing
           fi
