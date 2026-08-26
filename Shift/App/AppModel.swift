@@ -11,19 +11,21 @@ final class AppModel: ObservableObject {
 
     private let defaults: UserDefaults
     private let notifications = NotificationScheduler()
-    private var timer: Timer?
+    private var timer: Timer? = nil
 
     init(defaults: UserDefaults = .standard, trip: Trip? = nil) {
         self.defaults = defaults
-        self.trip = trip ?? TripStore.load(from: defaults) ?? Trips.usAugust2026()
-        self.schedule = SleepSchedule(
+        let resolvedTrip = trip ?? TripStore.load(from: defaults) ?? Trips.usAugust2026()
+        let resolvedSchedule = SleepSchedule(
             bedHour: defaults.object(forKey: "bedHour") as? Int ?? 23,
             bedMinute: defaults.object(forKey: "bedMinute") as? Int ?? 0,
             wakeHour: defaults.object(forKey: "wakeHour") as? Int ?? 7,
             wakeMinute: defaults.object(forKey: "wakeMinute") as? Int ?? 0
         )
+        self.trip = resolvedTrip
+        self.schedule = resolvedSchedule
         self.notificationsOn = defaults.object(forKey: "notificationsOn") as? Bool ?? true
-        self.plans = PlanEngine.build(trip: self.trip, schedule: self.schedule, now: Date())
+        self.plans = PlanEngine.build(trip: resolvedTrip, schedule: resolvedSchedule, now: Date())
         startClock()
     }
 
