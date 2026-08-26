@@ -94,7 +94,7 @@ struct TodayView: View {
                 clockColumn(
                     label: "Local",
                     time: ClockMath.format(model.now, timeZone: plan.timeZone, template: "HH:mm"),
-                    sub: ClockMath.formatWhen(model.now, timeZone: plan.timeZone)
+                    sub: ClockMath.formatWhen(model.now, timeZone: plan.timeZone, city: plan.clockCity)
                 )
                 clockColumn(
                     label: "Body clock",
@@ -137,14 +137,14 @@ struct TodayView: View {
             if let action {
                 Label(action.title, systemImage: symbol(action.kind))
                     .font(.title3.weight(.semibold))
-                Text(ClockMath.formatWhen(action.date, timeZone: plan.timeZone))
+                Text(ClockMath.formatWhen(action.date, timeZone: plan.timeZone, city: plan.clockCity))
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(ShiftTheme.accent)
                 Text(action.detail)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
-                Text("You’re through today’s list. Sleep \(ClockMath.formatWhen(plan.targetSleep, timeZone: plan.timeZone)).")
+                Text("You’re through today’s list. Sleep \(ClockMath.formatWhen(plan.targetSleep, timeZone: plan.timeZone, city: plan.clockCity)).")
                     .foregroundStyle(.secondary)
             }
         }
@@ -154,9 +154,9 @@ struct TodayView: View {
         ShiftCard {
             Label("Sleep window", systemImage: "bed.double.fill")
                 .font(.headline)
-            Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone))
+            Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone, city: plan.clockCity))
                 .font(.title3.monospacedDigit())
-            Text("Caffeine off after \(ClockMath.formatWhen(plan.caffeineCutoff, timeZone: plan.timeZone))")
+            Text("Caffeine off after \(ClockMath.formatWhen(plan.caffeineCutoff, timeZone: plan.timeZone, city: plan.clockCity))")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -213,7 +213,10 @@ struct PlanView: View {
                         Text(plan.locationName)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone))
+                        Text("\(plan.clockCity) time")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone, city: plan.clockCity))
                             .font(.subheadline.monospacedDigit())
                         if let note = plan.constraintNote {
                             Text(note)
@@ -264,9 +267,9 @@ struct DayDetailView: View {
                     Text("Sleep")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone))
+                    Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone, city: plan.clockCity))
                         .font(.title3.monospacedDigit())
-                    Text("Caffeine off \(ClockMath.formatWhen(plan.caffeineCutoff, timeZone: plan.timeZone))")
+                    Text("Caffeine off \(ClockMath.formatWhen(plan.caffeineCutoff, timeZone: plan.timeZone, city: plan.clockCity))")
                         .foregroundStyle(.secondary)
                 }
                 VStack(alignment: .leading, spacing: 0) {
@@ -278,8 +281,11 @@ struct DayDetailView: View {
                             Text(ClockMath.formatWhen(action.date, timeZone: plan.timeZone))
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(ShiftTheme.accent)
-                                .frame(width: 128, alignment: .leading)
-                            VStack(alignment: .leading, spacing: 4) {
+                                .frame(width: 108, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(plan.clockCity)
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
                                 Text(action.title)
                                     .font(.subheadline.weight(.semibold))
                                 Text(action.detail)

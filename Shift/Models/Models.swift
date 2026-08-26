@@ -53,6 +53,16 @@ struct DayPlan: Identifiable, Equatable {
 
     var hoursOff: Double { abs(bodyMinusLocalHours) }
 
+    /// City name used on clocks — destination side of a "AMS → Miami" flight.
+    var clockCity: String { Self.clockCity(from: locationName) }
+
+    static func clockCity(from locationName: String) -> String {
+        if let arrow = locationName.range(of: "→") {
+            return locationName[arrow.upperBound...].trimmingCharacters(in: .whitespaces)
+        }
+        return locationName
+    }
+
     func bodyClockTime(at date: Date) -> Date {
         date.addingTimeInterval(bodyMinusLocalHours * 3600)
     }
@@ -393,8 +403,16 @@ enum ClockMath {
         return f.string(from: date)
     }
 
-    static func formatSleepWindow(sleep: Date, wake: Date, timeZone: TimeZone) -> String {
-        "\(formatWhen(sleep, timeZone: timeZone)) → \(formatWhen(wake, timeZone: timeZone))"
+    static func formatWhen(_ date: Date, timeZone: TimeZone, city: String) -> String {
+        "\(formatWhen(date, timeZone: timeZone)) \(city)"
+    }
+
+    static func formatSleepWindow(sleep: Date, wake: Date, timeZone: TimeZone, city: String? = nil) -> String {
+        let range = "\(formatWhen(sleep, timeZone: timeZone)) → \(formatWhen(wake, timeZone: timeZone))"
+        if let city, !city.isEmpty {
+            return "Tonight · \(range) · \(city) time"
+        }
+        return range
     }
 
     static func keepingWallClock(_ date: Date, from: TimeZone, to: TimeZone) -> Date {

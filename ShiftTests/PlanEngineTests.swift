@@ -57,8 +57,9 @@ final class PlanEngineTests: XCTestCase {
     }
 
     func testCaffeineCutoffIsEightHoursBeforeBed() {
-        let day = plans[3]
-        let gap = day.targetSleep.timeIntervalSince(day.caffeineCutoff)
+        let day = plans.first { $0.locationName == "Amsterdam" }
+        XCTAssertNotNil(day)
+        let gap = day!.targetSleep.timeIntervalSince(day!.caffeineCutoff)
         XCTAssertEqual(gap, 8 * 3600, accuracy: 60)
     }
 
@@ -66,16 +67,49 @@ final class PlanEngineTests: XCTestCase {
         let ams = Trips.amsterdam
         let eleven = ClockMath.date(year: 2026, month: 8, day: 29, hour: 11, minute: 0, timeZone: ams)
         let leaveBy = ClockMath.date(year: 2026, month: 8, day: 29, hour: 7, minute: 30, timeZone: ams)
-        let saturdayWakes = plans.filter {
-            ClockMath.format($0.targetWake, timeZone: ams, template: "d MMM") == "29 Aug"
+        let friday = plans.first {
+            $0.locationName == "Amsterdam"
+                && ClockMath.format($0.dayStart, timeZone: ams, template: "d MMM") == "28 Aug"
         }
-        XCTAssertFalse(saturdayWakes.isEmpty, "expected a sleep window that wakes on Saturday 29 Aug")
-        for plan in saturdayWakes {
-            XCTAssertLessThan(plan.targetWake, eleven, "must not sleep in until 11:00 on flight morning")
-            XCTAssertLessThanOrEqual(plan.targetWake.timeIntervalSince(leaveBy), 60)
-            XCTAssertNotNil(plan.constraintNote)
-            XCTAssertTrue(plan.constraintNote?.contains("10:30") == true)
+        XCTAssertNotNil(friday, "Friday night in Amsterdam should own Saturday morning’s wake")
+        XCTAssertLessThan(friday!.targetWake, eleven)
+        XCTAssertLessThanOrEqual(friday!.targetWake.timeIntervalSince(leaveBy), 60)
+        XCTAssertNotNil(friday!.constraintNote)
+        XCTAssertTrue(friday!.constraintNote?.contains("10:30") == true)
+    }
+
+    func testSaturdayIsMiamiNightNotAmsterdamLieIn() {
+        let ams = Trips.amsterdam
+        let et = Trips.newYork
+        let amsterdamSaturday = plans.filter {
+            $0.locationName == "Amsterdam"
+                && ClockMath.format($0.dayStart, timeZone: ams, template: "d MMM") == "29 Aug"
         }
+        XCTAssertTrue(amsterdamSaturday.isEmpty, "leave AMS at 10:30 — no Amsterdam night on Sat 29")
+
+        let saturday = plans.filter {
+            ClockMath.format($0.dayStart, timeZone: $0.timeZone, template: "d MMM") == "29 Aug"
+        }
+        XCTAssertEqual(saturday.count, 1)
+        XCTAssertTrue(saturday[0].locationName.contains("Miami"))
+        XCTAssertEqual(saturday[0].timeZone.identifier, "America/New_York")
+        let sleepHour = hour(saturday[0].targetSleep, tz: et)
+        XCTAssertTrue(sleepHour >= 20 || sleepHour <= 2, "Miami tonight, not a 03:00 Amsterdam lie-in, got \(sleepHour)")
+        XCTAssertTrue(saturday[0].constraintNote?.contains("land") == true
+                      || saturday[0].constraintNote?.contains("Land") == true)
+    }
+
+    func testTuesdayNightIsAtlantaNotMiami() {
+        let et = Trips.newYork
+        let tuesdayMiami = plans.filter {
+            $0.locationName == "Miami"
+                && ClockMath.format($0.dayStart, timeZone: et, template: "d MMM") == "1 Sep"
+        }
+        XCTAssertTrue(tuesdayMiami.isEmpty, "leave Miami 20:19 — no Miami night on Tue 1 Sep")
+        let tuesday = plans.first {
+            ClockMath.format($0.dayStart, timeZone: $0.timeZone, template: "d MMM") == "1 Sep"
+        }
+        XCTAssertEqual(tuesday?.locationName, "Atlanta")
     }
 
     private func hour(_ date: Date, tz: TimeZone) -> Int {
@@ -182,6 +216,10 @@ final class ClockMathTests: XCTestCase {
         XCTAssertEqual(
             ClockMath.formatWhen(at, timeZone: Trips.amsterdam),
             "Sat 29 Aug, 07:30"
+        )
+        XCTAssertEqual(
+            ClockMath.formatWhen(at, timeZone: Trips.amsterdam, city: "Amsterdam"),
+            "Sat 29 Aug, 07:30 Amsterdam"
         )
     }
 }

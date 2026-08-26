@@ -51,10 +51,10 @@ struct KindBadge: View {
 
     private var label: String {
         switch kind {
-        case .delay: return "DELAY"
-        case .advance: return "ADVANCE"
+        case .delay: return "LATER"
+        case .advance: return "EARLIER"
         case .flight: return "FLIGHT"
-        case .hold: return "HOLD"
+        case .hold: return "LOCAL"
         }
     }
 }
