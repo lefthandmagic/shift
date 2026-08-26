@@ -8,12 +8,13 @@ Same TestFlight path as [Fitbit Health Sync](https://github.com/lefthandmagic/fi
 
 ## What the MVP does
 
-- **Today:** local time vs body clock, next action, sleep window, light seek/avoid, caffeine cutoff
-- **Plan:** day-by-day shift (westbound delay, eastbound advance, flight days)
-- **Notifications:** next 3 days of timed reminders (once you allow them)
-- **Home sleep:** default 23:00–07:00 Amsterdam, editable
-- **Itinerary:** edit stops, times, timezones, flights, and events in-app (Plan → Edit trip, or Settings). Edits persist on the phone. Reset restores the default US trip.
-- **KATSEYE 11 Sep 20:00** is included so landing-day bedtime sits after the show. ATL → LAX is a placeholder until you book — change Atlanta’s end or LA’s start.
+- **Today:** local vs body clock, next action, sleep window with weekday + time
+- **Plan:** day-by-day schedule; tap a day for a full timeline
+- **Trips:** multiple trips, duplicate/new, generate a schedule from the itinerary
+- **Practical flight mornings:** wake is clamped so you can’t sleep in through a 10:30 departure
+- **Notifications:** next 3 days of timed reminders
+- **Home sleep:** default 23:00–07:00 Amsterdam; airport lead time editable
+- **Itinerary:** edit stops, times, timezones, flights, and events. ATL → LAX is still a placeholder.
 
 ## Generate Xcode project
 

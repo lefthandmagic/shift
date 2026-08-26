@@ -62,6 +62,22 @@ final class PlanEngineTests: XCTestCase {
         XCTAssertEqual(gap, 8 * 3600, accuracy: 60)
     }
 
+    func testSaturdayFlightForcesWakeBeforeEleven() {
+        let ams = Trips.amsterdam
+        let eleven = ClockMath.date(year: 2026, month: 8, day: 29, hour: 11, minute: 0, timeZone: ams)
+        let leaveBy = ClockMath.date(year: 2026, month: 8, day: 29, hour: 7, minute: 30, timeZone: ams)
+        let saturdayWakes = plans.filter {
+            ClockMath.format($0.targetWake, timeZone: ams, template: "d MMM") == "29 Aug"
+        }
+        XCTAssertFalse(saturdayWakes.isEmpty, "expected a sleep window that wakes on Saturday 29 Aug")
+        for plan in saturdayWakes {
+            XCTAssertLessThan(plan.targetWake, eleven, "must not sleep in until 11:00 on flight morning")
+            XCTAssertLessThanOrEqual(plan.targetWake.timeIntervalSince(leaveBy), 60)
+            XCTAssertNotNil(plan.constraintNote)
+            XCTAssertTrue(plan.constraintNote?.contains("10:30") == true)
+        }
+    }
+
     private func hour(_ date: Date, tz: TimeZone) -> Int {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = tz
@@ -128,6 +144,22 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(reloaded.trip.name, "Custom itinerary")
         XCTAssertEqual(reloaded.trip.segments.count, trip.segments.count)
     }
+
+    func testLibraryKeepsTwoTrips() {
+        let suite = "shift.test.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let model = AppModel(defaults: defaults, trip: Trips.usAugust2026())
+        model.addTrip(Trips.blank(name: "London"))
+        XCTAssertEqual(model.trips.count, 2)
+        XCTAssertEqual(model.trip.name, "London")
+
+        let reloaded = AppModel(defaults: defaults)
+        XCTAssertEqual(reloaded.trips.count, 2)
+        XCTAssertEqual(reloaded.trip.name, "London")
+    }
 }
 
 final class ClockMathTests: XCTestCase {
@@ -143,5 +175,13 @@ final class ClockMathTests: XCTestCase {
         let delta = ClockMath.gmtOffsetHours(Trips.newYork, at: at)
             - ClockMath.gmtOffsetHours(Trips.losAngeles, at: at)
         XCTAssertEqual(delta, 3, accuracy: 0.01)
+    }
+
+    func testFormatWhenIncludesWeekdayAndTime() {
+        let at = ClockMath.date(year: 2026, month: 8, day: 29, hour: 7, minute: 30, timeZone: Trips.amsterdam)
+        XCTAssertEqual(
+            ClockMath.formatWhen(at, timeZone: Trips.amsterdam),
+            "Sat 29 Aug, 07:30"
+        )
     }
 }

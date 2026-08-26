@@ -88,9 +88,14 @@ struct ItineraryView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color(red: 0.05, green: 0.07, blue: 0.12).ignoresSafeArea())
+        .background(ShiftTheme.bg.ignoresSafeArea())
         .navigationTitle("Itinerary")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Generate") { model.generatePlan() }
+            }
+        }
         .confirmationDialog("Reset itinerary?", isPresented: $confirmReset, titleVisibility: .visible) {
             Button("Reset to default US trip", role: .destructive) {
                 model.resetTrip()
@@ -163,7 +168,7 @@ struct SegmentEditorView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color(red: 0.05, green: 0.07, blue: 0.12).ignoresSafeArea())
+        .background(ShiftTheme.bg.ignoresSafeArea())
         .navigationTitle(draft.name.isEmpty ? "Stop" : draft.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -236,7 +241,7 @@ struct EventEditorView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color(red: 0.05, green: 0.07, blue: 0.12).ignoresSafeArea())
+        .background(ShiftTheme.bg.ignoresSafeArea())
         .navigationTitle(draft.name.isEmpty ? "Event" : draft.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

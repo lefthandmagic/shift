@@ -49,6 +49,7 @@ struct DayPlan: Identifiable, Equatable {
     let headline: String
     let summary: String
     let actions: [ActionItem]
+    let constraintNote: String?
 
     var hoursOff: Double { abs(bodyMinusLocalHours) }
 
@@ -62,11 +63,11 @@ struct SleepSchedule: Equatable {
     var bedMinute: Int = 0
     var wakeHour: Int = 7
     var wakeMinute: Int = 0
-    /// Hours of circadian delay (westbound) applied per day.
     var delayRateHours: Double = 1.5
-    /// Hours of circadian advance (eastbound) applied per day.
     var advanceRateHours: Double = 1.0
     var preShiftDays: Int = 3
+    /// Hours before departure to be awake and at the airport.
+    var airportLeadHours: Double = 3.0
 
     var sleepLengthHours: Double {
         let bed = Double(bedHour) + Double(bedMinute) / 60
@@ -118,6 +119,10 @@ struct TripSegment: Identifiable, Codable, Equatable {
         TimeZone(identifier: timeZoneIdentifier) ?? TimeZone(identifier: "UTC")!
     }
 
+    var durationHours: Double {
+        max(0, end.timeIntervalSince(start) / 3600)
+    }
+
     init(
         id: UUID = UUID(),
         name: String,
@@ -149,7 +154,8 @@ struct TripEvent: Identifiable, Codable, Equatable {
     }
 }
 
-struct Trip: Codable, Equatable {
+struct Trip: Codable, Equatable, Identifiable {
+    var id: UUID
     var name: String
     var homeTimeZoneIdentifier: String
     var segments: [TripSegment]
@@ -163,16 +169,38 @@ struct Trip: Codable, Equatable {
         segments.map(\.name).joined(separator: " → ")
     }
 
+    var dateSpanLabel: String {
+        guard let first = segments.first, let last = segments.last else { return name }
+        let a = ClockMath.formatDay(first.start, timeZone: first.timeZone)
+        let b = ClockMath.formatDay(last.end, timeZone: last.timeZone)
+        return a == b ? a : "\(a) – \(b)"
+    }
+
     init(
+        id: UUID = UUID(),
         name: String,
         homeTimeZone: TimeZone,
         segments: [TripSegment],
         events: [TripEvent]
     ) {
+        self.id = id
         self.name = name
         self.homeTimeZoneIdentifier = homeTimeZone.identifier
         self.segments = segments
         self.events = events
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, homeTimeZoneIdentifier, segments, events
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decode(String.self, forKey: .name)
+        homeTimeZoneIdentifier = try c.decode(String.self, forKey: .homeTimeZoneIdentifier)
+        segments = try c.decode([TripSegment].self, forKey: .segments)
+        events = try c.decode([TripEvent].self, forKey: .events)
     }
 
     func segment(at date: Date) -> TripSegment? {
@@ -238,23 +266,72 @@ struct Trip: Codable, Equatable {
     mutating func deleteEvent(id: UUID) {
         events.removeAll { $0.id == id }
     }
+
+    func duplicated(name: String? = nil) -> Trip {
+        var copy = self
+        copy.id = UUID()
+        copy.name = name ?? "\(self.name) copy"
+        copy.segments = segments.map {
+            TripSegment(id: UUID(), name: $0.name, timeZone: $0.timeZone, start: $0.start, end: $0.end, isFlight: $0.isFlight)
+        }
+        copy.events = events.map {
+            TripEvent(id: UUID(), name: $0.name, start: $0.start, end: $0.end)
+        }
+        return copy
+    }
+}
+
+struct TripLibrary: Codable, Equatable {
+    var trips: [Trip]
+    var activeTripID: UUID
+
+    var active: Trip {
+        trips.first { $0.id == activeTripID } ?? trips[0]
+    }
 }
 
 enum TripStore {
     static let key = "tripJSON"
+    static let libraryKey = "tripLibraryJSON"
+
+    static func loadLibrary(from defaults: UserDefaults) -> TripLibrary {
+        if let data = defaults.data(forKey: libraryKey),
+           let lib = try? JSONDecoder().decode(TripLibrary.self, from: data),
+           !lib.trips.isEmpty {
+            return lib
+        }
+        if let data = defaults.data(forKey: key),
+           let trip = try? JSONDecoder().decode(Trip.self, from: data) {
+            return TripLibrary(trips: [trip], activeTripID: trip.id)
+        }
+        let us = Trips.usAugust2026()
+        return TripLibrary(trips: [us], activeTripID: us.id)
+    }
+
+    static func saveLibrary(_ library: TripLibrary, to defaults: UserDefaults) {
+        guard let data = try? JSONEncoder().encode(library) else { return }
+        defaults.set(data, forKey: libraryKey)
+    }
 
     static func load(from defaults: UserDefaults) -> Trip? {
-        guard let data = defaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(Trip.self, from: data)
+        loadLibrary(from: defaults).active
     }
 
     static func save(_ trip: Trip, to defaults: UserDefaults) {
-        guard let data = try? JSONEncoder().encode(trip) else { return }
-        defaults.set(data, forKey: key)
+        var lib = loadLibrary(from: defaults)
+        if let i = lib.trips.firstIndex(where: { $0.id == trip.id }) {
+            lib.trips[i] = trip
+            lib.activeTripID = trip.id
+        } else {
+            lib.trips.append(trip)
+            lib.activeTripID = trip.id
+        }
+        saveLibrary(lib, to: defaults)
     }
 
     static func clear(from defaults: UserDefaults) {
         defaults.removeObject(forKey: key)
+        defaults.removeObject(forKey: libraryKey)
     }
 }
 
@@ -306,7 +383,20 @@ enum ClockMath {
         format(date, timeZone: timeZone, template: "EEE d MMM")
     }
 
-    /// Keep the displayed wall-clock time when switching a segment's timezone.
+    /// Weekday, date, and time — e.g. "Sat 29 Aug, 07:30".
+    static func formatWhen(_ date: Date, timeZone: TimeZone) -> String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_GB")
+        f.timeZone = timeZone
+        f.dateFormat = "EEE d MMM, HH:mm"
+        return f.string(from: date)
+    }
+
+    static func formatSleepWindow(sleep: Date, wake: Date, timeZone: TimeZone) -> String {
+        "\(formatWhen(sleep, timeZone: timeZone)) → \(formatWhen(wake, timeZone: timeZone))"
+    }
+
     static func keepingWallClock(_ date: Date, from: TimeZone, to: TimeZone) -> Date {
         var source = Calendar(identifier: .gregorian)
         source.timeZone = from

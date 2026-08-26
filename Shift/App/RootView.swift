@@ -1,27 +1,23 @@
 import SwiftUI
 
 struct RootView: View {
+    @EnvironmentObject private var model: AppModel
+
     var body: some View {
-        TabView {
+        TabView(selection: $model.selectedTab) {
             TodayView()
                 .tabItem { Label("Today", systemImage: "sun.horizon.fill") }
+                .tag(0)
             PlanView()
                 .tabItem { Label("Plan", systemImage: "calendar") }
+                .tag(1)
+            TripsView()
+                .tabItem { Label("Trips", systemImage: "airplane") }
+                .tag(2)
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
+                .tag(3)
         }
-    }
-}
-
-private struct Card<Content: View>: View {
-    @ViewBuilder var content: Content
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            content
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -32,8 +28,12 @@ struct TodayView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    tripChip
                     if let plan = model.today {
                         clocks(plan)
+                        if let note = plan.constraintNote {
+                            constraintBanner(note)
+                        }
                         nextUp(plan)
                         sleepCard(plan)
                         lightCard(plan)
@@ -41,7 +41,7 @@ struct TodayView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     } else {
-                        Text("No plan for today.")
+                        Text("No plan for today. Open Trips and generate a schedule.")
                             .foregroundStyle(.secondary)
                     }
                     Text("Not medical advice. Light, sleep timing, and caffeine are the levers — skip anything that fights how you feel.")
@@ -50,21 +50,51 @@ struct TodayView: View {
                 }
                 .padding(16)
             }
-            .background(Color(red: 0.05, green: 0.07, blue: 0.12).ignoresSafeArea())
+            .background(ShiftTheme.bg.ignoresSafeArea())
             .navigationTitle("Shift")
             .navigationBarTitleDisplayMode(.large)
         }
     }
 
+    private var tripChip: some View {
+        Button {
+            model.selectedTab = 2
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.trip.name)
+                        .font(.subheadline.weight(.semibold))
+                    Text(model.trip.dateSpanLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("Switch")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(ShiftTheme.accent)
+            }
+            .padding(12)
+            .background(ShiftTheme.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
     private func clocks(_ plan: DayPlan) -> some View {
-        Card {
-            Text(plan.headline)
-                .font(.headline)
+        ShiftCard(tint: ShiftTheme.color(for: plan.kind)) {
+            HStack {
+                KindBadge(kind: plan.kind)
+                Spacer()
+                Text(plan.locationName)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
+                .font(.title2.weight(.semibold))
             HStack(alignment: .firstTextBaseline, spacing: 24) {
                 clockColumn(
-                    label: "Local · \(plan.locationName)",
+                    label: "Local",
                     time: ClockMath.format(model.now, timeZone: plan.timeZone, template: "HH:mm"),
-                    sub: ClockMath.formatDay(model.now, timeZone: plan.timeZone)
+                    sub: ClockMath.formatWhen(model.now, timeZone: plan.timeZone)
                 )
                 clockColumn(
                     label: "Body clock",
@@ -90,46 +120,57 @@ struct TodayView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private func constraintBanner(_ note: String) -> some View {
+        ShiftCard(tint: ShiftTheme.accent) {
+            Label(note, systemImage: "airplane.departure")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(ShiftTheme.accent)
+        }
+    }
+
     private func nextUp(_ plan: DayPlan) -> some View {
         let action = model.nextAction
-        return Card {
+        return ShiftCard {
             Text("Next")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if let action {
                 Label(action.title, systemImage: symbol(action.kind))
                     .font(.title3.weight(.semibold))
-                Text("\(ClockMath.format(action.date, timeZone: plan.timeZone)) · \(action.detail)")
+                Text(ClockMath.formatWhen(action.date, timeZone: plan.timeZone))
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(ShiftTheme.accent)
+                Text(action.detail)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
-                Text("You’re through today’s list. Sleep target \(ClockMath.format(plan.targetSleep, timeZone: plan.timeZone)).")
+                Text("You’re through today’s list. Sleep \(ClockMath.formatWhen(plan.targetSleep, timeZone: plan.timeZone)).")
                     .foregroundStyle(.secondary)
             }
         }
     }
 
     private func sleepCard(_ plan: DayPlan) -> some View {
-        Card {
+        ShiftCard {
             Label("Sleep window", systemImage: "bed.double.fill")
                 .font(.headline)
-            Text("\(ClockMath.format(plan.targetSleep, timeZone: plan.timeZone)) → \(ClockMath.format(plan.targetWake, timeZone: plan.timeZone))")
+            Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone))
                 .font(.title3.monospacedDigit())
-            Text("Caffeine off after \(ClockMath.format(plan.caffeineCutoff, timeZone: plan.timeZone))")
+            Text("Caffeine off after \(ClockMath.formatWhen(plan.caffeineCutoff, timeZone: plan.timeZone))")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
     }
 
     private func lightCard(_ plan: DayPlan) -> some View {
-        Card {
+        ShiftCard {
             Label("Light", systemImage: "sun.max.fill")
                 .font(.headline)
             if let seek = plan.lightSeek {
-                Text("Seek  \(ClockMath.format(seek.start, timeZone: plan.timeZone))–\(ClockMath.format(seek.end, timeZone: plan.timeZone))")
+                Text("Seek  \(ClockMath.formatWhen(seek.start, timeZone: plan.timeZone))–\(ClockMath.format(seek.end, timeZone: plan.timeZone))")
             }
             if let avoid = plan.lightAvoid {
-                Text("Avoid \(ClockMath.format(avoid.start, timeZone: plan.timeZone))–\(ClockMath.format(avoid.end, timeZone: plan.timeZone))")
+                Text("Avoid \(ClockMath.formatWhen(avoid.start, timeZone: plan.timeZone))–\(ClockMath.format(avoid.end, timeZone: plan.timeZone))")
                     .foregroundStyle(.secondary)
             }
             if plan.lightSeek == nil && plan.lightAvoid == nil {
@@ -159,33 +200,106 @@ struct PlanView: View {
     var body: some View {
         NavigationStack {
             List(model.plans) { plan in
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(plan.headline)
-                        .font(.headline)
-                    Text("Sleep \(ClockMath.format(plan.targetSleep, timeZone: plan.timeZone)) · up \(ClockMath.format(plan.targetWake, timeZone: plan.timeZone))")
-                        .font(.subheadline)
-                        .monospacedDigit()
-                    Text(plan.summary)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                NavigationLink {
+                    DayDetailView(plan: plan)
+                } label: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
+                                .font(.headline)
+                            Spacer()
+                            KindBadge(kind: plan.kind)
+                        }
+                        Text(plan.locationName)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone))
+                            .font(.subheadline.monospacedDigit())
+                        if let note = plan.constraintNote {
+                            Text(note)
+                                .font(.caption)
+                                .foregroundStyle(ShiftTheme.accent)
+                        }
+                    }
+                    .padding(.vertical, 6)
                 }
-                .listRowBackground(Color.white.opacity(0.05))
-                .padding(.vertical, 4)
+                .listRowBackground(ShiftTheme.card)
             }
             .scrollContentBackground(.hidden)
-            .background(Color(red: 0.05, green: 0.07, blue: 0.12).ignoresSafeArea())
+            .background(ShiftTheme.bg.ignoresSafeArea())
             .navigationTitle("Plan")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink("Edit trip") {
+                    NavigationLink("Edit itinerary") {
                         ItineraryView()
                     }
                 }
             }
         }
+    }
+}
+
+struct DayDetailView: View {
+    let plan: DayPlan
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                ShiftCard(tint: ShiftTheme.color(for: plan.kind)) {
+                    KindBadge(kind: plan.kind)
+                    Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
+                        .font(.title.weight(.semibold))
+                    Text(plan.locationName)
+                        .foregroundStyle(.secondary)
+                    Text(plan.headline)
+                        .font(.headline)
+                }
+                if let note = plan.constraintNote {
+                    ShiftCard(tint: ShiftTheme.accent) {
+                        Label(note, systemImage: "airplane.departure")
+                            .font(.subheadline.weight(.medium))
+                    }
+                }
+                ShiftCard {
+                    Text("Sleep")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone))
+                        .font(.title3.monospacedDigit())
+                    Text("Caffeine off \(ClockMath.formatWhen(plan.caffeineCutoff, timeZone: plan.timeZone))")
+                        .foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Timeline")
+                        .font(.headline)
+                        .padding(.bottom, 8)
+                    ForEach(plan.actions) { action in
+                        HStack(alignment: .top, spacing: 12) {
+                            Text(ClockMath.formatWhen(action.date, timeZone: plan.timeZone))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(ShiftTheme.accent)
+                                .frame(width: 128, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(action.title)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(action.detail)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 10)
+                        Divider().overlay(ShiftTheme.stroke)
+                    }
+                }
+                Text(plan.summary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(16)
+        }
+        .background(ShiftTheme.bg.ignoresSafeArea())
+        .navigationTitle(plan.locationName)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -197,14 +311,28 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Home sleep (Amsterdam)") {
+                Section {
                     DatePicker("Bedtime", selection: $bedDate, displayedComponents: .hourAndMinute)
                     DatePicker("Wake", selection: $wakeDate, displayedComponents: .hourAndMinute)
+                    Stepper(
+                        value: $model.schedule.airportLeadHours,
+                        in: 2...4,
+                        step: 0.5
+                    ) {
+                        Text("Airport lead \(model.schedule.airportLeadHours, specifier: "%.1f") h")
+                    }
+                    .onChange(of: model.schedule.airportLeadHours) { _, _ in
+                        model.rebuild()
+                    }
+                } header: {
+                    Text("Home sleep")
+                } footer: {
+                    Text("Airport lead is how early you must be awake before a flight. A 10:30 long-haul with 3 h lead means wake by 07:30 — not 11:00.")
                 }
                 Section("Alerts") {
                     Toggle("Timed reminders", isOn: $model.notificationsOn)
                 }
-                Section("Trip") {
+                Section("Active trip") {
                     NavigationLink {
                         ItineraryView()
                     } label: {
@@ -224,7 +352,7 @@ struct SettingsView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color(red: 0.05, green: 0.07, blue: 0.12).ignoresSafeArea())
+            .background(ShiftTheme.bg.ignoresSafeArea())
             .navigationTitle("Settings")
             .onAppear {
                 bedDate = SettingsView.date(hour: model.schedule.bedHour, minute: model.schedule.bedMinute)

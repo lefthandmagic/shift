@@ -3,11 +3,14 @@ import Combine
 
 @MainActor
 final class AppModel: ObservableObject {
+    @Published var trips: [Trip]
+    @Published var activeTripID: UUID
     @Published var trip: Trip
     @Published var schedule: SleepSchedule
     @Published var plans: [DayPlan]
     @Published var notificationsOn: Bool
     @Published var now: Date = Date()
+    @Published var selectedTab: Int = 0
 
     private let defaults: UserDefaults
     private let notifications = NotificationScheduler()
@@ -15,17 +18,25 @@ final class AppModel: ObservableObject {
 
     init(defaults: UserDefaults = .standard, trip: Trip? = nil) {
         self.defaults = defaults
-        let resolvedTrip = trip ?? TripStore.load(from: defaults) ?? Trips.usAugust2026()
-        let resolvedSchedule = SleepSchedule(
+        if let trip {
+            self.trips = [trip]
+            self.activeTripID = trip.id
+            self.trip = trip
+        } else {
+            let lib = TripStore.loadLibrary(from: defaults)
+            self.trips = lib.trips
+            self.activeTripID = lib.activeTripID
+            self.trip = lib.active
+        }
+        self.schedule = SleepSchedule(
             bedHour: defaults.object(forKey: "bedHour") as? Int ?? 23,
             bedMinute: defaults.object(forKey: "bedMinute") as? Int ?? 0,
             wakeHour: defaults.object(forKey: "wakeHour") as? Int ?? 7,
-            wakeMinute: defaults.object(forKey: "wakeMinute") as? Int ?? 0
+            wakeMinute: defaults.object(forKey: "wakeMinute") as? Int ?? 0,
+            airportLeadHours: defaults.object(forKey: "airportLeadHours") as? Double ?? 3.0
         )
-        self.trip = resolvedTrip
-        self.schedule = resolvedSchedule
         self.notificationsOn = defaults.object(forKey: "notificationsOn") as? Bool ?? true
-        self.plans = PlanEngine.build(trip: resolvedTrip, schedule: resolvedSchedule, now: Date())
+        self.plans = PlanEngine.build(trip: self.trip, schedule: self.schedule, now: Date())
         startClock()
     }
 
@@ -39,9 +50,47 @@ final class AppModel: ObservableObject {
     }
 
     func rebuild() {
+        writeActiveBack()
         plans = PlanEngine.build(trip: trip, schedule: schedule, now: now)
         persist()
         Task { await refreshNotifications() }
+    }
+
+    /// Rebuild the active trip’s schedule and jump to Plan.
+    func generatePlan() {
+        rebuild()
+        selectedTab = 1
+    }
+
+    func selectTrip(id: UUID) {
+        writeActiveBack()
+        guard let next = trips.first(where: { $0.id == id }) else { return }
+        activeTripID = id
+        trip = next
+        rebuild()
+    }
+
+    func addTrip(_ newTrip: Trip) {
+        writeActiveBack()
+        trips.append(newTrip)
+        activeTripID = newTrip.id
+        trip = newTrip
+        rebuild()
+    }
+
+    func duplicateActive() {
+        let copy = trip.duplicated()
+        addTrip(copy)
+    }
+
+    func deleteTrip(id: UUID) {
+        guard trips.count > 1 else { return }
+        trips.removeAll { $0.id == id }
+        if activeTripID == id {
+            trip = trips[0]
+            activeTripID = trip.id
+        }
+        rebuild()
     }
 
     func refreshNotifications() async {
@@ -53,12 +102,14 @@ final class AppModel: ObservableObject {
     }
 
     func persist() {
+        writeActiveBack()
         defaults.set(schedule.bedHour, forKey: "bedHour")
         defaults.set(schedule.bedMinute, forKey: "bedMinute")
         defaults.set(schedule.wakeHour, forKey: "wakeHour")
         defaults.set(schedule.wakeMinute, forKey: "wakeMinute")
+        defaults.set(schedule.airportLeadHours, forKey: "airportLeadHours")
         defaults.set(notificationsOn, forKey: "notificationsOn")
-        TripStore.save(trip, to: defaults)
+        TripStore.saveLibrary(TripLibrary(trips: trips, activeTripID: activeTripID), to: defaults)
     }
 
     func applyTrip(_ trip: Trip) {
@@ -67,7 +118,10 @@ final class AppModel: ObservableObject {
     }
 
     func resetTrip() {
-        trip = Trips.usAugust2026()
+        let replacement = Trips.usAugust2026()
+        var next = replacement
+        next.id = trip.id
+        trip = next
         rebuild()
     }
 
@@ -99,6 +153,16 @@ final class AppModel: ObservableObject {
     func deleteEvent(id: UUID) {
         trip.deleteEvent(id: id)
         rebuild()
+    }
+
+    private func writeActiveBack() {
+        if let i = trips.firstIndex(where: { $0.id == trip.id }) {
+            trips[i] = trip
+            activeTripID = trip.id
+        } else {
+            trips.append(trip)
+            activeTripID = trip.id
+        }
     }
 
     private func startClock() {

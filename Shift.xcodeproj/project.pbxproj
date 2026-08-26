@@ -13,10 +13,12 @@
 		1ADE0C5CF29E4E14D10CA34F /* PlanEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ABCF018F379839D8BBD141 /* PlanEngine.swift */; };
 		5DA6B52EC7063BEB76568DB4 /* PlanEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23217D951C7FB16B7D8A7615 /* PlanEngineTests.swift */; };
 		71D83EF2E36BC5A194343021 /* Trips.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF408E320B6924AE890897AE /* Trips.swift */; };
+		A15ABDA3C74B7A5BB8E4586A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B6121F05BABD5D90D3AE4B /* Theme.swift */; };
 		AEAF73C2E5237D11CA5B3DAF /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6B7D9C79D778F22482154B9 /* Models.swift */; };
 		C52870AC4E5648B3961F0B1B /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = BF22B007F93DB1BD70B99209 /* LaunchScreen.storyboard */; };
 		C71B1AC7D902E26FB1A9209D /* ShiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94FB623E54F816BCE28F53EF /* ShiftApp.swift */; };
 		D4ED58F5B5A5FD24A71A52EE /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3EBACAA03B26469E3F18FC3 /* NotificationScheduler.swift */; };
+		F91E9EA70159911C4BA964D8 /* TripsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6B2521AF4984FC849866F0 /* TripsView.swift */; };
 		FEAF3DFBAAD27195E451336F /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD1ED8225B25350C658A7E53 /* AppModel.swift */; };
 /* End PBXBuildFile section */
 
@@ -34,6 +36,7 @@
 		06957C48EB11D04207873DDB /* Shift.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Shift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		21ABCF018F379839D8BBD141 /* PlanEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanEngine.swift; sourceTree = "<group>"; };
 		23217D951C7FB16B7D8A7615 /* PlanEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanEngineTests.swift; sourceTree = "<group>"; };
+		34B6121F05BABD5D90D3AE4B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4038F0B7593F78904CA9A2D2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		40AB3BCBF03131F0CCF7C5A6 /* ShiftTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ShiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		94FB623E54F816BCE28F53EF /* ShiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftApp.swift; sourceTree = "<group>"; };
@@ -45,6 +48,7 @@
 		CD1ED8225B25350C658A7E53 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		CEA1820CDE2B572E03ACBB64 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EDC72740154ED1683254B824 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		FD6B2521AF4984FC849866F0 /* TripsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -65,6 +69,8 @@
 				CCDFD79A2294677D9BD3A774 /* ItineraryView.swift */,
 				4038F0B7593F78904CA9A2D2 /* RootView.swift */,
 				94FB623E54F816BCE28F53EF /* ShiftApp.swift */,
+				34B6121F05BABD5D90D3AE4B /* Theme.swift */,
+				FD6B2521AF4984FC849866F0 /* TripsView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -238,7 +244,9 @@
 				1ADE0C5CF29E4E14D10CA34F /* PlanEngine.swift in Sources */,
 				0ED35E1D4F34EE3050A1C9A2 /* RootView.swift in Sources */,
 				C71B1AC7D902E26FB1A9209D /* ShiftApp.swift in Sources */,
+				A15ABDA3C74B7A5BB8E4586A /* Theme.swift in Sources */,
 				71D83EF2E36BC5A194343021 /* Trips.swift in Sources */,
+				F91E9EA70159911C4BA964D8 /* TripsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

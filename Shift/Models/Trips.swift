@@ -12,7 +12,7 @@ enum Trips {
         let pt = losAngeles
 
         let pre = ClockMath.date(year: 2026, month: 8, day: 26, hour: 0, minute: 0, timeZone: ams)
-        let outboundDep = ClockMath.date(year: 2026, month: 8, day: 29, hour: 10, minute: 40, timeZone: ams)
+        let outboundDep = ClockMath.date(year: 2026, month: 8, day: 29, hour: 10, minute: 30, timeZone: ams)
         let outboundArr = ClockMath.date(year: 2026, month: 8, day: 29, hour: 14, minute: 45, timeZone: et)
         let atlArrive = ClockMath.date(year: 2026, month: 9, day: 1, hour: 20, minute: 19, timeZone: et)
         let laxArrive = ClockMath.date(year: 2026, month: 9, day: 3, hour: 16, minute: 0, timeZone: pt)
@@ -40,6 +40,21 @@ enum Trips {
             events: [
                 TripEvent(name: "KATSEYE · Ziggo Dome", start: katseyeStart, end: katseyeEnd),
             ]
+        )
+    }
+
+    /// Empty 7-day home block the user can turn into a real itinerary.
+    static func blank(name: String = "New trip") -> Trip {
+        let home = amsterdam
+        let start = ClockMath.startOfDay(Date(), timeZone: home)
+        let end = start.addingTimeInterval(7 * 86_400)
+        return Trip(
+            name: name,
+            homeTimeZone: home,
+            segments: [
+                TripSegment(name: "Home", timeZone: home, start: start, end: end, isFlight: false)
+            ],
+            events: []
         )
     }
 }
