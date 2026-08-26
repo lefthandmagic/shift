@@ -29,16 +29,18 @@ enum PlanEngine {
                 let probe = max(dayStart.addingTimeInterval(21 * 3600), segment.start)
                 let westJump = upcomingWestboundHours(trip: trip, from: probe, home: home)
                 let eastJump = upcomingEastboundHours(trip: trip, from: probe)
+                let daysUntilWest = daysUntilWestbound(trip: trip, from: probe)
+                let daysUntilEast = daysUntilEastbound(trip: trip, from: probe)
                 let preDelay = shouldPreDelay(
                     bodyMinusLocal: bodyMinusLocal,
                     westJump: westJump,
-                    daysUntilWest: daysUntilWestbound(trip: trip, from: probe),
+                    daysUntilWest: daysUntilWest,
                     preShiftDays: schedule.preShiftDays
                 )
                 let preAdvance = shouldPreAdvance(
                     bodyMinusLocal: bodyMinusLocal,
                     eastJump: eastJump,
-                    daysUntilEast: daysUntilEastbound(trip: trip, from: probe),
+                    daysUntilEast: daysUntilEast,
                     preShiftDays: max(schedule.preShiftDays, 4)
                 )
 
