@@ -16,6 +16,9 @@ enum ActionKind: String, Codable, Equatable {
     case move
     case hydrate
     case note
+    case nap
+    case melatonin
+    case caffeineOk
 }
 
 struct ActionItem: Identifiable, Equatable {
@@ -78,6 +81,8 @@ struct SleepSchedule: Equatable {
     var preShiftDays: Int = 3
     /// Hours before departure to be awake and at the airport.
     var airportLeadHours: Double = 3.0
+    /// Timed melatonin on shift days. Off by default — not medical advice.
+    var useMelatonin: Bool = false
 
     var sleepLengthHours: Double {
         let bed = Double(bedHour) + Double(bedMinute) / 60

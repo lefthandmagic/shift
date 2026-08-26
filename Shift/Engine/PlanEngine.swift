@@ -42,10 +42,11 @@ enum PlanEngine {
                     preShiftDays: max(schedule.preShiftDays, 4)
                 )
 
+                let chasingWest = westJump > 0.5 && daysUntilWest <= max(schedule.preShiftDays, 4)
                 let kind: ShiftKind
                 if segment.isFlight {
                     kind = .flight
-                } else if preDelay || bodyMinusLocal > 0.35 {
+                } else if preDelay || chasingWest || bodyMinusLocal > 0.35 {
                     kind = .delay
                 } else if preAdvance || bodyMinusLocal < -0.35 {
                     kind = .advance
@@ -55,9 +56,11 @@ enum PlanEngine {
 
                 switch kind {
                 case .delay:
-                    if preDelay && bodyMinusLocal <= 0.35 {
-                        let cap = -(max(westJump, 0) - 2)
+                    let cap = chasingWest ? -westJump : 0
+                    if preDelay && bodyMinusLocal <= 0.35 && westJump >= 4 {
                         bodyMinusLocal = max(cap, bodyMinusLocal - 1.0)
+                    } else if chasingWest {
+                        bodyMinusLocal = max(cap, bodyMinusLocal - schedule.delayRateHours)
                     } else {
                         bodyMinusLocal = max(0, bodyMinusLocal - schedule.delayRateHours)
                     }
@@ -150,14 +153,17 @@ enum PlanEngine {
 
     static func occupiesNight(_ dayStart: Date, segment: TripSegment) -> Bool {
         let tz = segment.timeZone
-        let settle = ClockMath.at(hour: 21, minute: 0, on: dayStart, timeZone: tz)
-        if settle >= segment.start && settle < segment.end {
-            return true
+        if !segment.isFlight {
+            let settle = ClockMath.at(hour: 21, minute: 0, on: dayStart, timeZone: tz)
+            return settle >= segment.start && settle < segment.end
         }
-        guard segment.isFlight else { return false }
-        let windowStart = ClockMath.at(hour: 22, minute: 0, on: dayStart, timeZone: tz)
-        let windowEnd = ClockMath.at(hour: 6, minute: 0, on: dayStart.addingTimeInterval(86_400), timeZone: tz)
-        return segment.start < windowEnd && segment.end > windowStart
+        // Real overnight: in the air at 02:00 destination-local the next morning.
+        // A 10:30 AMS departure is 04:30 in Miami — that must not count as a Miami night.
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = tz
+        guard let nextMorning = cal.date(byAdding: .day, value: 1, to: dayStart) else { return false }
+        let twoAM = ClockMath.at(hour: 2, minute: 0, on: nextMorning, timeZone: tz)
+        return twoAM >= segment.start && twoAM < segment.end
     }
 
     // MARK: - Day
@@ -210,12 +216,14 @@ enum PlanEngine {
 
         let caffeineCutoff = targetSleep.addingTimeInterval(-8 * 3600)
         let wake = targetWake
+        let arrival = inboundFlight(on: dayStart, tz: tz, trip: trip)
         let (seek, avoid) = lightWindows(
             kind: kind,
             dayStart: dayStart,
             wake: wake,
             sleep: targetSleep,
-            tz: tz
+            tz: tz,
+            seekFloor: arrival?.end
         )
 
         let headline = headlineText(kind: kind, location: locationName, hoursOff: abs(bodyMinusLocal), isFlight: isFlight)
@@ -237,13 +245,30 @@ enum PlanEngine {
                     + (constraintNote != nil && constraintNote?.contains("Wake by") == true ? " Flight morning — don’t snooze." : "")
             ),
         ]
+        let coffeeStart = ClockMath.at(hour: 7, minute: 0, on: dayStart, timeZone: tz)
+        actions.append(
+            ActionItem(
+                date: min(max(coffeeStart, dayStart.addingTimeInterval(7 * 3600)), caffeineCutoff.addingTimeInterval(-60)),
+                kind: .caffeineOk,
+                title: "Coffee is OK",
+                detail: "Coffee is OK until \(ClockMath.formatWhen(caffeineCutoff, timeZone: tz, city: city)). None after that."
+            )
+        )
+        actions.append(
+            ActionItem(
+                date: caffeineCutoff,
+                kind: .caffeineCutoff,
+                title: "Coffee cutoff",
+                detail: "Last coffee before \(ClockMath.formatWhen(caffeineCutoff, timeZone: tz, city: city)). None after that."
+            )
+        )
         if let seek {
             actions.append(
                 ActionItem(
                     date: seek.start,
                     kind: .seekLight,
-                    title: "Seek bright light",
-                    detail: "Outdoor or bright indoor light \(ClockMath.formatWhen(seek.start, timeZone: tz, city: city))–\(ClockMath.format(seek.end, timeZone: tz))."
+                    title: "Get outdoor light",
+                    detail: "Bright outdoor light \(ClockMath.formatWhen(seek.start, timeZone: tz, city: city))–\(ClockMath.format(seek.end, timeZone: tz)). This is what shifts the clock."
                 )
             )
         }
@@ -252,19 +277,35 @@ enum PlanEngine {
                 ActionItem(
                     date: avoid.start,
                     kind: .avoidLight,
-                    title: "Avoid bright light",
-                    detail: "Sunglasses / dim screens \(ClockMath.formatWhen(avoid.start, timeZone: tz, city: city))–\(ClockMath.format(avoid.end, timeZone: tz))."
+                    title: "Keep light low",
+                    detail: "Dim indoor light \(ClockMath.formatWhen(avoid.start, timeZone: tz, city: city))–\(ClockMath.format(avoid.end, timeZone: tz)). Bright morning light here pushes you the wrong way."
                 )
             )
         }
-        actions.append(
-            ActionItem(
-                date: caffeineCutoff,
-                kind: .caffeineCutoff,
-                title: "Caffeine cutoff",
-                detail: "Last coffee before \(ClockMath.formatWhen(caffeineCutoff, timeZone: tz, city: city))."
+        if schedule.useMelatonin, kind == .delay || kind == .flight {
+            let when = wake.addingTimeInterval(30 * 60)
+            actions.append(
+                ActionItem(
+                    date: when,
+                    kind: .melatonin,
+                    title: "Melatonin (optional)",
+                    detail: "If you use it, low dose (~0.5 mg) around \(ClockMath.formatWhen(when, timeZone: tz, city: city)). Not medical advice — ask a clinician."
+                )
             )
-        )
+        }
+        if schedule.useMelatonin, kind == .advance {
+            let when = targetSleep.addingTimeInterval(-5 * 3600)
+            if when > wake {
+                actions.append(
+                    ActionItem(
+                        date: when,
+                        kind: .melatonin,
+                        title: "Melatonin (optional)",
+                        detail: "If you use it, low dose (~0.5 mg) around \(ClockMath.formatWhen(when, timeZone: tz, city: city)). Not medical advice — ask a clinician."
+                    )
+                )
+            }
+        }
         actions.append(
             ActionItem(
                 date: targetSleep.addingTimeInterval(-30 * 60),
@@ -282,14 +323,47 @@ enum PlanEngine {
             )
         )
         if isFlight {
+            let takeoff = trip.segments.first(where: { $0.isFlight && $0.name == locationName })?.start ?? dayStart.addingTimeInterval(10 * 3600)
             actions.append(
                 ActionItem(
-                    date: max(dayStart.addingTimeInterval(10 * 3600), trip.segments.first(where: { $0.isFlight && $0.name == locationName })?.start ?? dayStart),
+                    date: takeoff,
                     kind: .hydrate,
                     title: "Hydrate on the plane",
-                    detail: "Water over alcohol. Sleep on board only if it overlaps tonight’s \(city) window."
+                    detail: "Water over alcohol."
                 )
             )
+            actions.append(
+                ActionItem(
+                    date: takeoff.addingTimeInterval(2 * 3600),
+                    kind: .nap,
+                    title: "Optional plane nap",
+                    detail: "Stay awake if you can. If wrecked, one 60–90 min nap max — not a full night. Sleep on board only if it overlaps tonight’s \(city) window."
+                )
+            )
+        }
+        let outbound = trip.segments.first { $0.isFlight && abs($0.start.timeIntervalSince(wake)) < 6 * 3600 }
+        if let flight = outbound, !isFlight {
+            actions.append(
+                ActionItem(
+                    date: flight.start,
+                    kind: .nap,
+                    title: "On the plane",
+                    detail: "Stay awake if you can. Optional 60–90 min nap. Window shades down in the morning, up later. No full sleep — tonight is at destination."
+                )
+            )
+        }
+        if arrival != nil, !isFlight {
+            let napEndLimit = targetSleep.addingTimeInterval(-6 * 3600)
+            if let land = arrival?.end, land.addingTimeInterval(90 * 60) < napEndLimit {
+                actions.append(
+                    ActionItem(
+                        date: land.addingTimeInterval(30 * 60),
+                        kind: .nap,
+                        title: "Nap only if wrecked",
+                        detail: "Optional 20–30 min, done by \(ClockMath.formatWhen(napEndLimit, timeZone: tz, city: city)). Don’t start a second night."
+                    )
+                )
+            }
         }
         for event in dayEvents {
             actions.append(
@@ -353,23 +427,27 @@ enum PlanEngine {
         dayStart: Date,
         wake: Date,
         sleep: Date,
-        tz: TimeZone
+        tz: TimeZone,
+        seekFloor: Date?
     ) -> (DateInterval?, DateInterval?) {
         let afternoon = ClockMath.at(hour: 14, minute: 0, on: dayStart, timeZone: tz)
-        let evening = ClockMath.at(hour: 20, minute: 0, on: dayStart, timeZone: tz)
-        let lateMorning = ClockMath.at(hour: 11, minute: 0, on: dayStart, timeZone: tz)
         switch kind {
         case .delay, .flight:
-            let seek = interval(from: max(wake, afternoon), to: min(sleep, evening.addingTimeInterval(3600)))
-            let avoid = interval(from: wake, to: max(wake.addingTimeInterval(3600), min(lateMorning, sleep)))
+            let seekEnd = sleep.addingTimeInterval(-90 * 60)
+            var seekStart = afternoon
+            if let floor = seekFloor {
+                seekStart = max(seekStart, floor)
+            }
+            let seek = interval(from: seekStart, to: seekEnd)
+            let avoid = interval(from: wake, to: wake.addingTimeInterval(3 * 3600))
             return (seek, avoid)
         case .advance:
-            let seek = interval(from: wake, to: max(wake.addingTimeInterval(2 * 3600), lateMorning))
+            let seek = interval(from: wake, to: wake.addingTimeInterval(3 * 3600))
             let avoidStart = ClockMath.at(hour: 18, minute: 0, on: dayStart, timeZone: tz)
             let avoid = interval(from: avoidStart, to: sleep)
             return (seek, avoid)
         case .hold:
-            return (interval(from: wake, to: lateMorning), nil)
+            return (interval(from: wake, to: wake.addingTimeInterval(3 * 3600)), nil)
         }
     }
 
@@ -401,7 +479,7 @@ enum PlanEngine {
         let core: String
         switch kind {
         case .delay:
-            core = "All times \(city) local. Push bedtime later toward night there. \(window). Evening light, dark morning."
+            core = "All times \(city) local. Push bedtime later. \(window). Evening outdoor light, keep mornings dim. Coffee until the cutoff, then none."
         case .advance:
             core = "All times \(city) local. Pull bedtime earlier toward night there. \(window). Morning light, dim evenings."
         case .hold:

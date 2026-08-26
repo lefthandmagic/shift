@@ -33,8 +33,8 @@ final class PlanEngineTests: XCTestCase {
     func testPacificJumpAddsDelay() {
         let la = plans.first { $0.locationName == "Los Angeles" }
         XCTAssertNotNil(la)
-        XCTAssertGreaterThan(la!.bodyMinusLocalHours, 0.3)
-        XCTAssertEqual(la!.kind, .delay)
+        // By LA the engine has already been sliding toward Pacific, so first LA night is close to local.
+        XCTAssertLessThan(la!.hoursOff, 3.5)
     }
 
     func testReturnFlightUsesAmsterdamTime() {
@@ -110,6 +110,52 @@ final class PlanEngineTests: XCTestCase {
             ClockMath.format($0.dayStart, timeZone: $0.timeZone, template: "d MMM") == "1 Sep"
         }
         XCTAssertEqual(tuesday?.locationName, "Atlanta")
+    }
+
+    func testNoFakeDaytimeFlightNight() {
+        let outboundNights = plans.filter { $0.locationName.contains("AMS →") }
+        XCTAssertTrue(outboundNights.isEmpty, "daytime AMS→Miami must not own a sleep night")
+        XCTAssertTrue(plans.contains { $0.locationName.contains("SFO") && $0.kind == .flight })
+    }
+
+    func testEveryNightHasCoffeeAndLight() {
+        for plan in plans {
+            XCTAssertTrue(plan.actions.contains { $0.kind == .caffeineOk }, plan.locationName)
+            XCTAssertTrue(plan.actions.contains { $0.kind == .caffeineCutoff }, plan.locationName)
+            XCTAssertEqual(plan.targetSleep.timeIntervalSince(plan.caffeineCutoff), 8 * 3600, accuracy: 60)
+        }
+        let wed = plans.first {
+            $0.locationName == "Amsterdam"
+                && ClockMath.format($0.dayStart, timeZone: Trips.amsterdam, template: "d MMM") == "26 Aug"
+        }
+        XCTAssertNotNil(wed?.lightSeek)
+    }
+
+    func testMelatoninOnlyWhenEnabled() {
+        XCTAssertFalse(plans.contains { $0.actions.contains { $0.kind == .melatonin } })
+        var on = SleepSchedule()
+        on.useMelatonin = true
+        let withMel = PlanEngine.build(trip: trip, schedule: on)
+        XCTAssertTrue(withMel.contains { $0.actions.contains { $0.kind == .melatonin } })
+    }
+
+    func testSlidesTowardPacificAfterMiami() {
+        let et = Trips.newYork
+        let sunday = plans.first {
+            $0.locationName == "Miami"
+                && ClockMath.format($0.dayStart, timeZone: et, template: "d MMM") == "30 Aug"
+        }
+        let monday = plans.first {
+            $0.locationName == "Miami"
+                && ClockMath.format($0.dayStart, timeZone: et, template: "d MMM") == "31 Aug"
+        }
+        XCTAssertNotNil(sunday)
+        XCTAssertNotNil(monday)
+        XCTAssertGreaterThan(
+            monday!.targetSleep.timeIntervalSince(sunday!.targetSleep),
+            24 * 3600,
+            "Monday bedtime should be later than Sunday as we slide toward Pacific"
+        )
     }
 
     private func hour(_ date: Date, tz: TimeZone) -> Int {

@@ -36,7 +36,8 @@ final class AppModel: ObservableObject {
             bedMinute: defaults.object(forKey: "bedMinute") as? Int ?? 0,
             wakeHour: defaults.object(forKey: "wakeHour") as? Int ?? 7,
             wakeMinute: defaults.object(forKey: "wakeMinute") as? Int ?? 0,
-            airportLeadHours: defaults.object(forKey: "airportLeadHours") as? Double ?? 3.0
+            airportLeadHours: defaults.object(forKey: "airportLeadHours") as? Double ?? 3.0,
+            useMelatonin: defaults.object(forKey: "useMelatonin") as? Bool ?? false
         )
         self.trips = resolvedTrips
         self.activeTripID = resolvedID
@@ -115,6 +116,7 @@ final class AppModel: ObservableObject {
         defaults.set(schedule.wakeHour, forKey: "wakeHour")
         defaults.set(schedule.wakeMinute, forKey: "wakeMinute")
         defaults.set(schedule.airportLeadHours, forKey: "airportLeadHours")
+        defaults.set(schedule.useMelatonin, forKey: "useMelatonin")
         defaults.set(notificationsOn, forKey: "notificationsOn")
         TripStore.saveLibrary(TripLibrary(trips: trips, activeTripID: activeTripID), to: defaults)
     }

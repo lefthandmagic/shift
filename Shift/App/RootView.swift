@@ -167,10 +167,10 @@ struct TodayView: View {
             Label("Light", systemImage: "sun.max.fill")
                 .font(.headline)
             if let seek = plan.lightSeek {
-                Text("Seek  \(ClockMath.formatWhen(seek.start, timeZone: plan.timeZone))–\(ClockMath.format(seek.end, timeZone: plan.timeZone))")
+                Text("Get outdoor light  \(ClockMath.formatWhen(seek.start, timeZone: plan.timeZone))–\(ClockMath.format(seek.end, timeZone: plan.timeZone))")
             }
             if let avoid = plan.lightAvoid {
-                Text("Avoid \(ClockMath.formatWhen(avoid.start, timeZone: plan.timeZone))–\(ClockMath.format(avoid.end, timeZone: plan.timeZone))")
+                Text("Keep light low \(ClockMath.formatWhen(avoid.start, timeZone: plan.timeZone))–\(ClockMath.format(avoid.end, timeZone: plan.timeZone))")
                     .foregroundStyle(.secondary)
             }
             if plan.lightSeek == nil && plan.lightAvoid == nil {
@@ -183,13 +183,15 @@ struct TodayView: View {
     private func symbol(_ kind: ActionKind) -> String {
         switch kind {
         case .seekLight: return "sun.max.fill"
-        case .avoidLight: return "sunglasses"
+        case .avoidLight: return "moon.zzz.fill"
         case .sleep: return "moon.fill"
         case .wake: return "sunrise.fill"
-        case .caffeineCutoff: return "cup.and.saucer.fill"
+        case .caffeineCutoff, .caffeineOk: return "cup.and.saucer.fill"
         case .move: return "figure.walk"
         case .hydrate: return "drop.fill"
         case .note: return "star.fill"
+        case .nap: return "zzz"
+        case .melatonin: return "pills"
         }
     }
 }
@@ -218,6 +220,14 @@ struct PlanView: View {
                             .foregroundStyle(.tertiary)
                         Text(ClockMath.formatSleepWindow(sleep: plan.targetSleep, wake: plan.targetWake, timeZone: plan.timeZone, city: plan.clockCity))
                             .font(.subheadline.monospacedDigit())
+                        Text("Coffee until \(ClockMath.formatWhen(plan.caffeineCutoff, timeZone: plan.timeZone, city: plan.clockCity))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if let seek = plan.lightSeek {
+                            Text("Light \(ClockMath.formatWhen(seek.start, timeZone: plan.timeZone))–\(ClockMath.format(seek.end, timeZone: plan.timeZone))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         if let note = plan.constraintNote {
                             Text(note)
                                 .font(.caption)
@@ -335,6 +345,16 @@ struct SettingsView: View {
                 } footer: {
                     Text("Airport lead is how early you must be awake before a flight. A 10:30 long-haul with 3 h lead means wake by 07:30 — not 11:00.")
                 }
+                Section {
+                    Toggle("Use melatonin", isOn: $model.schedule.useMelatonin)
+                        .onChange(of: model.schedule.useMelatonin) { _, _ in
+                            model.rebuild()
+                        }
+                } header: {
+                    Text("Melatonin")
+                } footer: {
+                    Text("Off by default. If on, Shift times a low dose on shift days. Optional. Not medical advice — ask a clinician.")
+                }
                 Section("Alerts") {
                     Toggle("Timed reminders", isOn: $model.notificationsOn)
                 }
@@ -352,9 +372,7 @@ struct SettingsView: View {
                     }
                 }
                 Section("About") {
-                    Text("Shift times your light, sleep, and caffeine around timezone jumps. It is a coach, not a doctor.")
-                    Text("Melatonin is omitted on purpose — ask a clinician if you use it.")
-                        .foregroundStyle(.secondary)
+                    Text("Shift times light, sleep, and caffeine around timezone jumps. It is a coach, not a doctor.")
                 }
             }
             .scrollContentBackground(.hidden)
