@@ -18,25 +18,32 @@ final class AppModel: ObservableObject {
 
     init(defaults: UserDefaults = .standard, trip: Trip? = nil) {
         self.defaults = defaults
+        let resolvedTrip: Trip
+        let resolvedID: UUID
+        let resolvedTrips: [Trip]
         if let trip {
-            self.trips = [trip]
-            self.activeTripID = trip.id
-            self.trip = trip
+            resolvedTrips = [trip]
+            resolvedID = trip.id
+            resolvedTrip = trip
         } else {
             let lib = TripStore.loadLibrary(from: defaults)
-            self.trips = lib.trips
-            self.activeTripID = lib.activeTripID
-            self.trip = lib.active
+            resolvedTrips = lib.trips
+            resolvedID = lib.activeTripID
+            resolvedTrip = lib.active
         }
-        self.schedule = SleepSchedule(
+        let resolvedSchedule = SleepSchedule(
             bedHour: defaults.object(forKey: "bedHour") as? Int ?? 23,
             bedMinute: defaults.object(forKey: "bedMinute") as? Int ?? 0,
             wakeHour: defaults.object(forKey: "wakeHour") as? Int ?? 7,
             wakeMinute: defaults.object(forKey: "wakeMinute") as? Int ?? 0,
             airportLeadHours: defaults.object(forKey: "airportLeadHours") as? Double ?? 3.0
         )
+        self.trips = resolvedTrips
+        self.activeTripID = resolvedID
+        self.trip = resolvedTrip
+        self.schedule = resolvedSchedule
         self.notificationsOn = defaults.object(forKey: "notificationsOn") as? Bool ?? true
-        self.plans = PlanEngine.build(trip: self.trip, schedule: self.schedule, now: Date())
+        self.plans = PlanEngine.build(trip: resolvedTrip, schedule: resolvedSchedule, now: Date())
         startClock()
     }
 

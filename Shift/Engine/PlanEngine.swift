@@ -6,7 +6,7 @@ enum PlanEngine {
         schedule: SleepSchedule,
         now: Date = Date()
     ) -> [DayPlan] {
-        guard let first = trip.segments.first else { return [] }
+        guard !trip.segments.isEmpty else { return [] }
 
         let home = trip.homeTimeZone
         var bodyMinusLocal = 0.0
