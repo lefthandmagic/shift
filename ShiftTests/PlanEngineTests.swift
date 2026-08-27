@@ -299,6 +299,30 @@ final class ClockMathTests: XCTestCase {
         )
     }
 
+    func testNightDateKeepsAfterMidnightSleepOnThePreviousEvening() {
+        let ams = Trips.amsterdam
+        let et = Trips.newYork
+        let delayed = ClockMath.date(year: 2026, month: 8, day: 28, hour: 1, minute: 0, timeZone: ams)
+        let fridayNight = ClockMath.date(year: 2026, month: 8, day: 28, hour: 23, minute: 30, timeZone: ams)
+        XCTAssertEqual(ClockMath.formatNight(delayed, timeZone: ams), "Thu 27 Aug")
+        XCTAssertEqual(ClockMath.formatNight(fridayNight, timeZone: ams), "Fri 28 Aug")
+
+        let miamiSaturday = ClockMath.date(year: 2026, month: 8, day: 29, hour: 23, minute: 0, timeZone: et)
+        XCTAssertEqual(ClockMath.formatNight(miamiSaturday, timeZone: ams), "Sat 29 Aug")
+    }
+
+    func testUSTripNightLabelsAreUniqueOnThePhoneClock() {
+        let plans = PlanEngine.build(trip: Trips.usAugust2026(), schedule: SleepSchedule())
+        let now = ClockMath.date(year: 2026, month: 8, day: 27, hour: 20, minute: 42, timeZone: Trips.amsterdam)
+        let labels = PlanEngine.relevantPlans(plans, at: now).map {
+            ClockMath.formatNight($0.targetSleep, timeZone: Trips.amsterdam)
+        }
+        XCTAssertEqual(labels.count, Set(labels).count, "duplicate night labels: \(labels)")
+        XCTAssertTrue(labels.contains("Thu 27 Aug"))
+        XCTAssertTrue(labels.contains("Fri 28 Aug"))
+        XCTAssertTrue(labels.contains("Sat 29 Aug"))
+    }
+
     func testLocalDayRangeIsMidnightToMidnight() {
         let tz = TimeZone(identifier: "Europe/Amsterdam")!
         let afternoon = ClockMath.date(year: 2026, month: 8, day: 27, hour: 14, minute: 30, timeZone: tz)

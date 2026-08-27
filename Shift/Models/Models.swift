@@ -423,6 +423,19 @@ enum ClockMath {
         format(date, timeZone: timeZone, template: "EEE d MMM")
     }
 
+    /// The evening this sleep belongs to. 01:00 Friday is still Thursday night.
+    static func nightDate(forSleep sleep: Date, timeZone: TimeZone) -> Date {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let start = cal.startOfDay(for: sleep)
+        guard cal.component(.hour, from: sleep) < 12 else { return start }
+        return cal.date(byAdding: .day, value: -1, to: start) ?? start
+    }
+
+    static func formatNight(_ sleep: Date, timeZone: TimeZone) -> String {
+        formatDay(nightDate(forSleep: sleep, timeZone: timeZone), timeZone: timeZone)
+    }
+
     /// Weekday, date, and time — e.g. "Sat 29 Aug, 07:30".
     static func formatWhen(_ date: Date, timeZone: TimeZone) -> String {
         let f = DateFormatter()

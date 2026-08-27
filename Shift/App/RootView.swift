@@ -58,7 +58,7 @@ struct PlanView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
-                                Text(ClockMath.formatDay(plan.targetSleep, timeZone: .current))
+                                Text(ClockMath.formatNight(plan.targetSleep, timeZone: .current))
                                     .font(.headline)
                                 Spacer()
                                 HStack(spacing: 6) {
@@ -135,7 +135,7 @@ struct DayDetailView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(ClockMath.formatDay(item.targetSleep, timeZone: .current))
+                                    Text(ClockMath.formatNight(item.targetSleep, timeZone: .current))
                                         .font(.title.weight(.semibold))
                                     Text(item.clockCity)
                                         .foregroundStyle(.secondary)
