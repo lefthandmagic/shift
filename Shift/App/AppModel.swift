@@ -52,6 +52,15 @@ final class AppModel: ObservableObject {
         PlanEngine.plan(for: now, in: plans)
     }
 
+    /// Tonight onward — last night only if you just woke.
+    var relevantPlans: [DayPlan] {
+        PlanEngine.relevantPlans(plans, at: now)
+    }
+
+    var focusedPlan: DayPlan? {
+        relevantPlans.first(where: { $0.id == today?.id }) ?? relevantPlans.first
+    }
+
     var nextAction: ActionItem? {
         guard let today else { return nil }
         return PlanEngine.currentAction(at: now, plan: today)

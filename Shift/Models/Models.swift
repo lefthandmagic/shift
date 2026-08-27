@@ -386,6 +386,15 @@ enum ClockMath {
         return cal.startOfDay(for: date)
     }
 
+    /// Midnight→midnight in a zone — used for Today’s full-day rail.
+    static func localDayRange(containing date: Date, timeZone: TimeZone = .current) -> ClosedRange<Date> {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let start = cal.startOfDay(for: date)
+        let end = cal.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(24 * 3600)
+        return start...end
+    }
+
     static func at(hour: Int, minute: Int, on day: Date, timeZone: TimeZone) -> Date {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = timeZone

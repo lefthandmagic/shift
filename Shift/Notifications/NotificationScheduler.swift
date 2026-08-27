@@ -32,11 +32,11 @@ final class NotificationScheduler {
                 content.title = action.title
                 content.body = action.detail
                 content.sound = .default
-                var comps = Calendar.current.dateComponents(in: plan.timeZone, from: action.date)
+                var comps = Calendar.current.dateComponents(in: TimeZone.current, from: action.date)
                 comps.second = 0
                 let trigger = UNCalendarNotificationTrigger(dateMatching: DateComponents(
                     calendar: Calendar(identifier: .gregorian),
-                    timeZone: plan.timeZone,
+                    timeZone: TimeZone.current,
                     year: comps.year,
                     month: comps.month,
                     day: comps.day,

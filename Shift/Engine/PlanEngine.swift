@@ -97,6 +97,13 @@ enum PlanEngine {
         return plans
     }
 
+    /// Nights still in play — last night if you just woke, otherwise tonight onward.
+    static func relevantPlans(_ plans: [DayPlan], at now: Date) -> [DayPlan] {
+        plans.filter { plan in
+            now < plan.targetWake.addingTimeInterval(3 * 3600) || plan.targetSleep >= now
+        }
+    }
+
     static func plan(for date: Date, in plans: [DayPlan]) -> DayPlan? {
         if let flying = plans.first(where: { plan in
             guard let flight = plan.inFlight else { return false }

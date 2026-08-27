@@ -298,4 +298,42 @@ final class ClockMathTests: XCTestCase {
             "Sat 29 Aug, 07:30 Amsterdam"
         )
     }
+
+    func testLocalDayRangeIsMidnightToMidnight() {
+        let tz = TimeZone(identifier: "Europe/Amsterdam")!
+        let afternoon = ClockMath.date(year: 2026, month: 8, day: 27, hour: 14, minute: 30, timeZone: tz)
+        let range = ClockMath.localDayRange(containing: afternoon, timeZone: tz)
+        XCTAssertEqual(ClockMath.format(range.lowerBound, timeZone: tz, template: "d MMM"), "27 Aug")
+        XCTAssertEqual(ClockMath.format(range.lowerBound, timeZone: tz), "00:00")
+        XCTAssertEqual(ClockMath.format(range.upperBound, timeZone: tz, template: "d MMM"), "28 Aug")
+        XCTAssertEqual(ClockMath.format(range.upperBound, timeZone: tz), "00:00")
+        XCTAssertEqual(range.upperBound.timeIntervalSince(range.lowerBound), 24 * 3600, accuracy: 1)
+    }
+}
+
+final class PlanRelevanceTests: XCTestCase {
+    func testRelevantPlansDropsFinishedNightsAndKeepsTonightOnward() {
+        let plans = PlanEngine.build(trip: Trips.usAugust2026(), schedule: SleepSchedule())
+        let now = ClockMath.date(year: 2026, month: 8, day: 27, hour: 14, minute: 30, timeZone: Trips.amsterdam)
+        let relevant = PlanEngine.relevantPlans(plans, at: now)
+        XCTAssertFalse(relevant.contains {
+            ClockMath.format($0.dayStart, timeZone: $0.timeZone, template: "d MMM") == "26 Aug"
+        })
+        XCTAssertTrue(relevant.contains {
+            ClockMath.format($0.dayStart, timeZone: $0.timeZone, template: "d MMM") == "27 Aug"
+        })
+        XCTAssertEqual(
+            relevant.first.map { ClockMath.format($0.dayStart, timeZone: $0.timeZone, template: "d MMM") },
+            "27 Aug"
+        )
+    }
+
+    func testRelevantPlansKeepsLastNightWhileYouAreStillInIt() {
+        let plans = PlanEngine.build(trip: Trips.usAugust2026(), schedule: SleepSchedule())
+        let now = ClockMath.date(year: 2026, month: 8, day: 27, hour: 6, minute: 0, timeZone: Trips.amsterdam)
+        let relevant = PlanEngine.relevantPlans(plans, at: now)
+        XCTAssertTrue(relevant.contains {
+            ClockMath.format($0.dayStart, timeZone: $0.timeZone, template: "d MMM") == "26 Aug"
+        })
+    }
 }

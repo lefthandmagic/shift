@@ -132,6 +132,8 @@ struct DayTimeline: View {
     var now: Date? = nil
     var hourHeight: CGFloat = 34
     var rangeOverride: ClosedRange<Date>? = nil
+    /// Phone clock — where you are, not the stop’s zone.
+    var timeZone: TimeZone = .current
 
     @State private var selected: ActionItem?
 
@@ -157,6 +159,7 @@ struct DayTimeline: View {
                 bandColumn(trackX: trackX, trackW: trackW, height: h)
                 pinColumn(x: trackX + trackW - 6, height: h)
                 if let now, now >= range.lowerBound && now <= range.upperBound {
+                    nowAnchor(now, height: h)
                     nowNeedle(now, width: geo.size.width, height: h)
                 }
             }
@@ -167,9 +170,12 @@ struct DayTimeline: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Label(action.title, systemImage: ShiftIcons.symbol(action.kind))
                         .font(.title2.weight(.semibold))
-                    Text(ClockMath.formatWhen(action.date, timeZone: plan.timeZone, city: plan.clockCity))
+                    Text(ClockMath.formatWhen(action.date, timeZone: timeZone))
                         .font(.headline.monospacedDigit())
                         .foregroundStyle(ShiftTheme.accent)
+                    Text(plan.clockCity)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
                     Text(action.detail)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -192,13 +198,13 @@ struct DayTimeline: View {
 
     private func hourGrid(width: CGFloat, height: CGFloat) -> some View {
         var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = plan.timeZone
+        cal.timeZone = timeZone
         var hours: [Date] = []
         var cursor = ClockMath.at(
             hour: cal.component(.hour, from: range.lowerBound),
             minute: 0,
             on: range.lowerBound,
-            timeZone: plan.timeZone
+            timeZone: timeZone
         )
         if cursor < range.lowerBound {
             cursor = cursor.addingTimeInterval(3600)
@@ -212,7 +218,7 @@ struct DayTimeline: View {
             ForEach(hours, id: \.self) { hour in
                 let y = TimelineLayout.y(date: hour, range: range, hourHeight: hourHeight)
                 HStack(spacing: 8) {
-                    Text(ClockMath.format(hour, timeZone: plan.timeZone, template: "HH:mm"))
+                    Text(ClockMath.format(hour, timeZone: timeZone, template: "HH:mm"))
                         .font(.caption2.monospacedDigit().weight(.medium))
                         .foregroundStyle(.tertiary)
                         .frame(width: 40, alignment: .trailing)
@@ -305,6 +311,17 @@ struct DayTimeline: View {
         return extra
     }
 
+    private func nowAnchor(_ now: Date, height: CGFloat) -> some View {
+        let y = TimelineLayout.y(date: now, range: range, hourHeight: hourHeight)
+        return VStack(spacing: 0) {
+            Color.clear.frame(height: max(0, y))
+            Color.clear.frame(height: 1).id("now")
+            Spacer(minLength: 0)
+        }
+        .frame(height: height, alignment: .top)
+        .allowsHitTesting(false)
+    }
+
     private func nowNeedle(_ now: Date, width: CGFloat, height: CGFloat) -> some View {
         let y = TimelineLayout.y(date: now, range: range, hourHeight: hourHeight)
         return HStack(spacing: 6) {
@@ -342,47 +359,58 @@ struct SlashOverlay: View {
     }
 }
 
-/// Live window around now — sized to fill Today without scrolling.
+/// Full local day, scrolled to now.
 struct NowTimeline: View {
-    /// 12 hours fills a phone screen at a tappable density. 24 hours would be ~22 pt/hour and pins would collide.
-    static let windowHours: Double = 12
-
     let plan: DayPlan
     var allPlans: [DayPlan] = []
     let now: Date
 
+    private var zone: TimeZone { .current }
+    private var happeningNow: String? {
+        let sources = allPlans.isEmpty ? [plan] : allPlans
+        return sources.compactMap { TimelineLayout.happening(at: now, plan: $0) }.first
+    }
+
     var body: some View {
-        let start = now.addingTimeInterval(-30 * 60)
-        let end = start.addingTimeInterval(Self.windowHours * 3600)
-        let window = start...end
+        let window = ClockMath.localDayRange(containing: now, timeZone: zone)
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Next 12 hours")
+                    Text("Today")
                         .font(.headline)
-                    if let happening = TimelineLayout.happening(at: now, plan: plan) {
+                    if let happening = happeningNow {
                         Text(happening)
                             .font(.caption.weight(.medium))
                             .foregroundStyle(ShiftTheme.accent)
                     }
                 }
                 Spacer()
-                Text("\(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone)) · \(plan.clockCity)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(ClockMath.format(now, timeZone: zone, template: "EEE d MMM HH:mm"))
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Text(plan.clockCity)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
-            GeometryReader { geo in
-                let hourHeight = geo.size.height / CGFloat(Self.windowHours)
-                DayTimeline(
-                    plan: plan,
-                    allPlans: allPlans,
-                    now: now,
-                    hourHeight: hourHeight,
-                    rangeOverride: window
-                )
+            ScrollViewReader { proxy in
+                ScrollView {
+                    DayTimeline(
+                        plan: plan,
+                        allPlans: allPlans,
+                        now: now,
+                        hourHeight: 36,
+                        rangeOverride: window,
+                        timeZone: zone
+                    )
+                    .padding(.bottom, 8)
+                }
+                .onAppear { scrollToNow(proxy) }
+                .onChange(of: ClockMath.format(now, timeZone: zone, template: "HH")) { _, _ in
+                    scrollToNow(proxy)
+                }
             }
-            .frame(maxHeight: .infinity)
             TimelineLegend()
         }
         .padding(14)
@@ -392,6 +420,14 @@ struct NowTimeline: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(ShiftTheme.stroke, lineWidth: 1)
         )
+    }
+
+    private func scrollToNow(_ proxy: ScrollViewProxy) {
+        DispatchQueue.main.async {
+            withAnimation(.easeOut(duration: 0.25)) {
+                proxy.scrollTo("now", anchor: .center)
+            }
+        }
     }
 }
 

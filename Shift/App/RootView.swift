@@ -51,48 +51,67 @@ struct PlanView: View {
 
     var body: some View {
         NavigationStack {
-            List(model.plans) { plan in
-                NavigationLink {
-                    DayDetailView(plan: plan)
-                } label: {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text(ClockMath.formatDay(plan.dayStart, timeZone: plan.timeZone))
-                                .font(.headline)
-                            Spacer()
-                            HStack(spacing: 6) {
-                                if plan.inFlight != nil {
-                                    Image(systemName: "airplane")
-                                        .font(.caption2.weight(.semibold))
-                                        .foregroundStyle(ShiftTheme.flight)
+            ScrollViewReader { proxy in
+                List(model.relevantPlans) { plan in
+                    NavigationLink {
+                        DayDetailView(plan: plan)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text(ClockMath.formatDay(plan.targetSleep, timeZone: .current))
+                                    .font(.headline)
+                                Spacer()
+                                HStack(spacing: 6) {
+                                    if plan.inFlight != nil {
+                                        Image(systemName: "airplane")
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(ShiftTheme.flight)
+                                    }
+                                    Text(plan.clockCity)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
                                 }
-                                Text(plan.clockCity)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
                             }
+                            DayRibbon(plan: plan)
+                            Text(
+                                ClockMath.format(plan.targetSleep, timeZone: .current)
+                                    + "–"
+                                    + ClockMath.format(plan.targetWake, timeZone: .current)
+                            )
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
                         }
-                        DayRibbon(plan: plan)
-                        Text(
-                            ClockMath.format(plan.targetSleep, timeZone: plan.timeZone)
-                                + "–"
-                                + ClockMath.format(plan.targetWake, timeZone: plan.timeZone)
-                        )
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
+                    .id(plan.id)
+                    .listRowBackground(
+                        plan.id == model.focusedPlan?.id
+                            ? ShiftTheme.accent.opacity(0.14)
+                            : ShiftTheme.card
+                    )
                 }
-                .listRowBackground(ShiftTheme.card)
+                .scrollContentBackground(.hidden)
+                .background(ShiftTheme.bg.ignoresSafeArea())
+                .navigationTitle("Plan")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        NavigationLink("Edit") {
+                            ItineraryView()
+                        }
+                    }
+                }
+                .onAppear {
+                    scrollPlanToNow(proxy)
+                }
             }
-            .scrollContentBackground(.hidden)
-            .background(ShiftTheme.bg.ignoresSafeArea())
-            .navigationTitle("Plan")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink("Edit") {
-                        ItineraryView()
-                    }
-                }
+        }
+    }
+
+    private func scrollPlanToNow(_ proxy: ScrollViewProxy) {
+        let id = model.focusedPlan?.id
+        DispatchQueue.main.async {
+            if let id {
+                proxy.scrollTo(id, anchor: .top)
             }
         }
     }
@@ -110,28 +129,37 @@ struct DayDetailView: View {
 
     var body: some View {
         TabView(selection: $selected) {
-            ForEach(model.plans) { item in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack(alignment: .firstTextBaseline) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(ClockMath.formatDay(item.dayStart, timeZone: item.timeZone))
-                                    .font(.title.weight(.semibold))
-                                Text(item.clockCity)
-                                    .foregroundStyle(.secondary)
+            ForEach(model.relevantPlans) { item in
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack(alignment: .firstTextBaseline) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(ClockMath.formatDay(item.targetSleep, timeZone: .current))
+                                        .font(.title.weight(.semibold))
+                                    Text(item.clockCity)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if item.inFlight != nil {
+                                    Label("Flight", systemImage: "airplane")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(ShiftTheme.flight)
+                                }
                             }
-                            Spacer()
-                            if item.inFlight != nil {
-                                Label("Flight", systemImage: "airplane")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(ShiftTheme.flight)
-                            }
+                            TimelineLegend()
+                            DayTimeline(plan: item, now: model.now, hourHeight: 36, timeZone: .current)
+                                .padding(.bottom, 8)
                         }
-                        TimelineLegend()
-                        DayTimeline(plan: item, now: model.now, hourHeight: 36)
-                            .padding(.bottom, 8)
+                        .padding(16)
                     }
-                    .padding(16)
+                    .onAppear {
+                        let range = TimelineLayout.range(for: item)
+                        guard model.now >= range.lowerBound && model.now <= range.upperBound else { return }
+                        DispatchQueue.main.async {
+                            proxy.scrollTo("now", anchor: .center)
+                        }
+                    }
                 }
                 .tag(item.dayStart)
             }
